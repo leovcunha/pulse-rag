@@ -8,6 +8,7 @@ This document establishes the strict rules of engagement, code design principles
 *Do not assume user intent, do not hide technical uncertainty, and always make tradeoffs explicit before writing code.*
 
 * **Explicit Assumptions**: If a requirement is underspecified or ambiguous, stop and state your assumptions before proceeding. If you are uncertain about a design decision, ask for clarification.
+* **No Speculative Mocking/Fallbacks**: Never write speculative code, placeholder modes, or mock logic (e.g., simulating API responses because of missing keys) based on assumptions about user resources or configurations. If a resource or key is missing, halt and ask the user how they wish to proceed.
 * **Surface Tradeoffs**: When multiple implementation paths exist, present them to the user with their pros, cons, and performance implications (e.g., latency, dependency overhead).
 * **Propose Simpler Alternatives**: If a requested feature can be achieved through a simpler or more elegant design, propose it before implementing the more complex requested approach.
 * **Halt on Confusion**: If you encounter contradictory requirements or confusing legacy code, stop immediately. Document the exact conflict and wait for clarification.
