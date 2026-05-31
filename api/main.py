@@ -1,4 +1,11 @@
+import os
 import logging
+
+# Clean up invalid SSL_CERT_FILE to prevent httpx/ssl from crashing on HTTPS requests
+ssl_cert_file = os.environ.get("SSL_CERT_FILE")
+if ssl_cert_file and not os.path.exists(ssl_cert_file):
+    del os.environ["SSL_CERT_FILE"]
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv

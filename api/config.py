@@ -4,6 +4,11 @@ from dotenv import load_dotenv
 # Load environment variables from local .env if available
 load_dotenv()
 
+# Clean up invalid SSL_CERT_FILE to prevent httpx/ssl from crashing on HTTPS requests
+ssl_cert_file = os.environ.get("SSL_CERT_FILE")
+if ssl_cert_file and not os.path.exists(ssl_cert_file):
+    os.environ.pop("SSL_CERT_FILE", None)
+
 class Settings:
     # API Keys
     TAVILY_API_KEY: str = os.getenv("TAVILY_API_KEY", "")

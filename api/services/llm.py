@@ -125,6 +125,11 @@ async def stream_llm_response(query: str, sources: List[SearchResult]) -> AsyncG
         ttft_recorded = False
 
         try:
+            # Clean up invalid SSL_CERT_FILE to prevent httpx/ssl from crashing on HTTPS requests
+            ssl_cert_file = os.environ.get("SSL_CERT_FILE")
+            if ssl_cert_file and not os.path.exists(ssl_cert_file):
+                os.environ.pop("SSL_CERT_FILE", None)
+
             # We use a 2.5 second timeout on Groq so we can fallback to OpenRouter quickly if it hangs
             timeout = httpx.Timeout(2.5, connect=1.5)
             async with httpx.AsyncClient(timeout=timeout) as client:
@@ -169,8 +174,8 @@ async def stream_llm_response(query: str, sources: List[SearchResult]) -> AsyncG
             # If we successfully finished the stream, break out of provider loop
             return
 
-        except (httpx.ConnectTimeout, httpx.ReadTimeout, httpx.ConnectError, httpx.HTTPError) as e:
-            logger.error(f"HTTP error with provider {provider_name}: {str(e)}")
+        except Exception as e:
+            logger.error(f"Error with provider {provider_name}: {str(e)}")
             yield {"type": "fallback_alert", "message": f"Provider {provider_name} failed. Falling back..."}
             continue  # try next provider
 
