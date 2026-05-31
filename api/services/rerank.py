@@ -37,7 +37,7 @@ async def rerank_results_async(query: str, search_results: List[SearchResult], m
     }
 
     try:
-        async with httpx.AsyncClient(timeout=2.0) as client:
+        async with httpx.AsyncClient(timeout=0.8) as client:
             response = await client.post(settings.COHERE_RERANK_URL, json=payload, headers=headers)
             response.raise_for_status()
             data = response.json()

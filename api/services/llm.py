@@ -130,8 +130,8 @@ async def stream_llm_response(query: str, sources: List[SearchResult]) -> AsyncG
             if ssl_cert_file and not os.path.exists(ssl_cert_file):
                 os.environ.pop("SSL_CERT_FILE", None)
 
-            # We use a 2.5 second timeout on Groq so we can fallback to OpenRouter quickly if it hangs
-            timeout = httpx.Timeout(2.5, connect=1.5)
+            # We use a 1.8 second timeout on Groq so we can fallback to OpenRouter quickly if it hangs
+            timeout = httpx.Timeout(1.8, connect=0.8)
             async with httpx.AsyncClient(timeout=timeout) as client:
                 async with client.stream("POST", provider["url"], json=payload, headers=provider["headers"]) as response:
                     
