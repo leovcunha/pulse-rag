@@ -61,7 +61,7 @@ export const SourceCard: React.FC<SourceCardProps> = ({
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              justify-content: 'center',
+              justifyContent: 'center',
               width: '24px',
               height: '24px',
               borderRadius: '6px',
