@@ -95,7 +95,16 @@ This document establishes the strict rules of engagement, code design principles
 
 ---
 
-## 7. Git Instructions & Best Practices
+## 7. Externalized Configuration & Prompts (No Hardcoding)
+*Never hardcode configuration variables, API endpoints, model identifiers, or LLM prompts inside source code files.*
+
+* **Sensitive Secrets & Endpoints**: All API credentials (keys, secrets) and environment-specific endpoints/URLs (e.g., search, rerank, or LLM base URLs) must be loaded dynamically from **Environment Variables** (or via a `.env` file for local development).
+* **Application Settings**: Non-sensitive settings like model identifiers, timeouts, maximum limits, and ports must be loaded from **Configuration Files** or config utilities (e.g., a Pydantic Settings class or a JSON/YAML configuration file) rather than hardcoded inline.
+* **LLM Prompts & Templates**: System prompts, instructions, and prompt templates must reside in separate **Prompt Resource Files** (e.g., `.txt` or `.yaml` template files under a designated directory like `api/prompts/` or `api/resources/`) and read at runtime, not embedded as raw multiline strings inside Python or JS source code.
+
+---
+
+## 8. Git Instructions & Best Practices
 *Maintain a clean, logical, and descriptive git history. Code is read far more often than it is written.*
 
 * **Atomic Commits**: Commit changes in small, logical chunks. Do not group multiple unrelated features, fixes, or styling changes into a single massive commit.
