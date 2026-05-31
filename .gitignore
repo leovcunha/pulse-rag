@@ -1,0 +1,25 @@
+# Python cache and bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment variables
+.env
+.env.local
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE settings
+.vscode/
+.idea/
+
+# Frontend dependencies and builds
+client/node_modules/
+client/dist/
+client/dist-ssr/
+client/*.local
+node_modules/

@@ -1,0 +1,108 @@
+# Developer & Agent Guidelines (Repository Contract)
+
+This document establishes the strict rules of engagement, code design principles, and operational guidelines for all AI agents and contributors working in this repository. Any code modifications or planning must adhere to this contract.
+
+---
+
+## 1. Think and Align Before Coding
+*Do not assume user intent, do not hide technical uncertainty, and always make tradeoffs explicit before writing code.*
+
+* **Explicit Assumptions**: If a requirement is underspecified or ambiguous, stop and state your assumptions before proceeding. If you are uncertain about a design decision, ask for clarification.
+* **Surface Tradeoffs**: When multiple implementation paths exist, present them to the user with their pros, cons, and performance implications (e.g., latency, dependency overhead).
+* **Propose Simpler Alternatives**: If a requested feature can be achieved through a simpler or more elegant design, propose it before implementing the more complex requested approach.
+* **Halt on Confusion**: If you encounter contradictory requirements or confusing legacy code, stop immediately. Document the exact conflict and wait for clarification.
+
+---
+
+## 2. Radical Simplicity (YAGNI & KISS)
+*Write the absolute minimum amount of code necessary to solve the problem. Do not write speculative code or build premature abstractions.*
+
+* **No Speculative Features**: Only implement features explicitly requested. Do not add hooks, configurations, or helper methods for "future extension."
+* **No Single-Use Abstractions**: Avoid creating wrappers, utility classes, or helper functions for code that is only executed in a single place. Keep code inline and concrete until reuse is proven necessary.
+* **Compress and Rewrite**: Keep code compact and readable. If a solution can be implemented cleanly in 50 lines of simple, procedural code, do not write 200 lines of highly abstracted object-oriented code.
+* **Realistic Error Handling**: Implement error handling for expected external failure modes (e.g., API timeouts, rate limits, network drops). Do not write redundant error handling or check for impossible states in deterministic local code.
+
+---
+
+## 3. Surgical and Non-Invasive Edits
+*Limit the footprint of your changes. Touch only the files, lines, and functions that are strictly necessary to accomplish the goal.*
+
+* **Strict Scope Isolation**: Do not "improve," reformat, or refactor adjacent code or files that are outside the scope of the requested change. Leave them exactly as they are.
+* **Match Existing Style**: Conform entirely to the existing coding style, naming conventions, directory structures, and import patterns in the repository, even if you prefer a different approach.
+* **Flag, Do Not Delete**: If you notice dead, unused, or deprecated code during your work, do not delete it. Instead, flag it to the user or note it in the pull request description.
+
+---
+
+## 4. Goal-Oriented and Verifiable Execution
+*Define clear success criteria for every task and verify them programmatically before concluding work.*
+
+* **Failing Test First (Reproduction)**: When fixing a bug, first write a test case or script that reproduces the bug and fails. Verify that the bug is fixed only when that specific test case passes.
+* **Pre/Post Regression Checks**: Before and after making any change, run existing verification suites (linting, type checking, or unit tests) to ensure zero regressions are introduced.
+* **Explicit Success Criteria**: Avoid vague definitions of done. Translate tasks into concrete, verifiable outcomes:
+  * *Vague*: "Implement API endpoint validation."
+  * *Verifiable*: "Write an integration test that sends invalid JSON to the endpoint, verify it returns 422 Unprocessable Entity, then make the test pass."
+
+---
+
+## 5. Frontend Structure & Isolation (`client/`)
+*The frontend owns UI/UX, routing, state management, and presentational data fetching. It must never handle server-side secrets or privileged business logic.*
+
+### Architectural Boundaries
+* **No Secrets**: Under no circumstances should service role keys, privileged keys, or backend secrets be committed to or loaded by the client.
+* **No Privileged Business Logic**: Avoid executing sensitive business rules or database integrity validations on the client. Trust only the backend's validations.
+
+### Directory Roles & Patterns (Pages Orchestrate, Hooks Implement, Components Render)
+* **`client/pages/`**: Route-level containers.
+  * **Allowed**: Handle client-side routing, compose UI sections, wire custom hooks, and manage overall loading/error UI states.
+  * **Forbidden**: Direct API fetch wiring or database queries.
+* **`client/components/`**: Reusable presentational building blocks.
+  * **Allowed**: Stylings, accessibility, local component UI state, and render props.
+  * **Forbidden**: Executing API calls (`fetch`/`axios`), or mutating global application state directly. They must be testable solely by passing props.
+* **`client/hooks/`**: Reusable stateful logic.
+  * **Allowed**: Session handling, data fetching, global/derived state, and side-effects.
+* **`client/lib/`**: Pure utilities and client-side helper libraries.
+* **`client/integrations/`**: Third-party SDK wrappers.
+
+### Best Practices
+* **Container/Presenter Split**: If a component grows large or complex, separate it into a presenter (pure render component) and a container (logic component).
+* **Data Fetching**: Prefer React Query (or native state management libraries) for server state management. Do not use ad-hoc `useEffect` calls to fetch data.
+* **No JSX Data Transformations**: Format, filter, and transform data inside custom hooks or library helpers before passing them to JSX.
+
+---
+
+## 6. Backend Structure & Layering (`api/`)
+*The backend must enforce a strict separation of concerns between route handling, business workflows, and data access.*
+
+### Endpoint / Route Layer (`api/routes/`)
+* **Responsibilities**: Parse and validate request bodies, call service layer functions, shape response formats, and map exceptions to HTTP status codes.
+* **Prohibited Inline**: Raw database queries, building LLM prompts, or copy-pasting API call logic (e.g., `httpx` setups) inside routes is strictly forbidden.
+* **Domain Partitioning**: Split routes by domain (e.g., `api/routes/messages.py`). `api/index.py` (or `main.py`) must remain as the lightweight app entrypoint only.
+
+### Service Layer (`api/services/` or `api/`)
+* **Responsibilities**: Enforce workflow and domain logic (e.g., `api/message_service.py`).
+* **Data Retrieval**: Fetch external or local data via repositories or dedicated client wrappers. Do not query data sources directly inline inside other business services.
+
+### Data Access Layer (`api/utils/` or `api/repositories/`)
+* **Responsibilities**: Centralize external connections and database REST calls behind clean, defined boundaries (e.g., `api/utils/supabase_client.py`). 
+* **Scaling**: If data access logic grows, modularize it into repositories (e.g., `api/repositories/`), but maintain a single, consolidated entry point for database communication.
+
+### Schemas and API Contracts (`api/schemas/`)
+* **Pydantic Validation**: All request and response payloads must enforce schemas defined using Pydantic models under `api/schemas/`.
+* **Consistent Naming**: Keep variable names consistent between DB schema, API response, and frontend types (e.g., `client_id`, `phone_number`).
+* **Database Encapsulation**: Never expose database structures or internal column names directly in API responses without mapping them to the API schema.
+* **LLM Modularization**: Group all agentic logic, prompts, and LLM integrations under a clean `api/llm/` module.
+
+---
+
+## 7. Git Instructions & Best Practices
+*Maintain a clean, logical, and descriptive git history. Code is read far more often than it is written.*
+
+* **Atomic Commits**: Commit changes in small, logical chunks. Do not group multiple unrelated features, fixes, or styling changes into a single massive commit.
+* **Conventional Commits**: Use the Conventional Commits structure for all commit messages. 
+  * Format: `<type>(<scope>): <short description in imperative mood>`
+  * Examples: 
+    * `feat(api): add Cohere reranking service`
+    * `fix(client): fix latency visual layout overflow on small screens`
+    * `docs(repo): update API key environment variables in README`
+* **Clean Diff Review**: Before staging or committing, run `git diff` to review all changes. Ensure no local temporary files, print statement debug lines, hardcoded keys, or draft notes are committed.
+* **Never Commit Secrets**: Ensure `.env` or any secret key file is included in `.gitignore` and never committed to the remote repository.
