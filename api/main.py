@@ -22,7 +22,12 @@ app = FastAPI(
 # Configure CORS for React/Vite development server (port 5173 and 3000)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For local testing, allow any origin. Can restrict to specific ports if required.
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -37,4 +42,8 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    import pathlib
+    
+    # Restrict reload scanning to the 'api' directory to avoid searching client/node_modules/
+    api_dir = str(pathlib.Path(__file__).parent)
+    uvicorn.run("api.main:app", host="127.0.0.1", port=8000, reload=True, reload_dirs=[api_dir])

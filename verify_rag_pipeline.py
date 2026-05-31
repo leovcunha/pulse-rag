@@ -95,7 +95,7 @@ async def test_rag_streaming():
 async def main():
     health_ok = await test_health()
     if not health_ok:
-        print("Please start the FastAPI server with 'uvicorn api.main:app --reload' before running this test.")
+        print("Please start the FastAPI server with 'python -m api.main' or 'uvicorn api.main:app --reload --reload-dir api' before running this test.")
         return
         
     await test_rag_streaming()
