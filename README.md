@@ -30,6 +30,22 @@ This document outlines the architecture, data flow, and latency budget for the S
 +---------------------------------------+
 ```
 
+## System Mechanics
+
+### Why is this a RAG System?
+This application implements a **Retrieval-Augmented Generation (RAG)** pipeline using live web search:
+1. **Retrieval**: When a query is submitted, the system queries the live web using the Tavily Search API. This makes it a **Web-Scale RAG** or **Search-RAG** system, drawing on current, real-time internet data instead of a static, pre-compiled vector index.
+2. **Augmentation**: The retrieved search summaries are cross-evaluated, ranked, and the top 5 most relevant documents are formatted into a prompt context template.
+3. **Generation**: The compiled prompt is sent to the LLM (Groq/OpenRouter), which synthesizes a response using *only* the provided context and attaches bracketed citation links (e.g., `[1]`, `[2]`) pointing to the sources in the sidebar.
+
+### How does it run in under 2 seconds?
+Achieving sub-2-second end-to-end execution requires optimizations at every pipeline stage:
+- **Asynchronous Pipeline**: The FastAPI gateway is fully asynchronous (`httpx.AsyncClient` and `async/await`), preventing blocked threads while waiting for external API network responses.
+- **Fast Web Search**: Configured with Tavily's `"ultra-fast"` search depth and limited to 10 sources, cutting web retrieval time to ~650ms.
+- **Efficient Filtering**: Cohere Rerank acts as a semantic filter, selecting the top 5 relevant documents so we do not feed noise or overly large contexts to the LLM, keeping reranking under ~250ms.
+- **High-Throughput Inference (Groq)**: The system defaults to Groq (`llama-3.1-8b-instant`), which leverages LPU hardware to achieve extremely low Time-to-First-Token (TTFT) (~200ms) and >200 tokens/second throughput.
+- **SSE Streaming**: Rather than waiting for the entire answer to compile on the server, tokens are streamed to the React client via Server-Sent Events (SSE) as they are generated. The user sees the first characters rendering in **~700ms - 800ms**.
+
 ## Latency Budget Breakdown (Target: < 2.0s)
 
 To guarantee a sub-2-second response, every component must fit into a strict time budget:
