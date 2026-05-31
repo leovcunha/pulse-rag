@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 TAVILY_API_URL = "https://api.tavily.com/search"
 
-async def search_web_async(query: str, max_results: int = 6) -> List[SearchResult]:
+async def search_web_async(query: str, max_results: int = 10) -> List[SearchResult]:
     """
     Asynchronously queries the Tavily Search API.
     Returns a list of SearchResult models.
@@ -22,7 +22,7 @@ async def search_web_async(query: str, max_results: int = 6) -> List[SearchResul
     payload = {
         "api_key": api_key,
         "query": query,
-        "search_depth": "basic",
+        "search_depth": "ultra-fast",
         "include_answer": False,
         "include_raw_content": False,
         "include_images": False,
