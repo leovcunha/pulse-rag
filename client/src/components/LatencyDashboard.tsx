@@ -25,7 +25,7 @@ export const LatencyDashboard: React.FC<LatencyDashboardProps> = ({
 }) => {
   const steps: LatencyStep[] = [
     { name: 'Web Search (Tavily)', key: 'search_ms', target: 350, description: 'Querying and cleaning web results' },
-    { name: 'Reranking (Cohere)', key: 'rerank_ms', target: 150, description: 'Filtering for top 3 relevant cards' },
+    { name: 'Reranking (Cohere)', key: 'rerank_ms', target: 150, description: 'Filtering for top 5 relevant cards' },
     { name: 'Prompt Prep', key: 'prompt_ms', target: 5, description: 'In-memory template structuring' },
     { name: 'LLM Time-to-First-Token', key: 'llm_ttft_ms', target: 200, description: 'Provider start to initial token return' },
   ];
@@ -70,7 +70,7 @@ export const LatencyDashboard: React.FC<LatencyDashboardProps> = ({
 
   // Calculate actual total
   const actualTotal = metrics?.total_ms || 0;
-  const targetTotal = 1800; // 1.8 seconds SLA target
+  const targetTotal = 2000; // 2.0 seconds SLA target
 
   return (
     <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>

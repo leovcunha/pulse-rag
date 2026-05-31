@@ -247,7 +247,7 @@ export const App: React.FC = () => {
           </div>
 
           {/* Diagnostics & Sources Side Column */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }} className="side-column">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', alignSelf: 'start' }} className="side-column">
             {/* Latency Diagnostic Metrics */}
             <LatencyDashboard
               status={status}
