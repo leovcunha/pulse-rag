@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { API_URL } from '../config';
 
 export interface SearchSource {
   title: string;
@@ -38,10 +39,8 @@ export const useRagQuery = () => {
     setError(null);
     setFallbackAlert(null);
 
-    const gatewayUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/query';
-
     try {
-      const response = await fetch(gatewayUrl, {
+      const response = await fetch(API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

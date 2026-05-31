@@ -1,8 +1,9 @@
-import os
+import asyncio
 import httpx
 import logging
 from typing import List
 from api.schemas.query import SearchResult
+from api.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -13,9 +14,9 @@ async def search_web_async(query: str, max_results: int = 6) -> List[SearchResul
     Asynchronously queries the Tavily Search API.
     Returns a list of SearchResult models.
     """
-    api_key = os.getenv("TAVILY_API_KEY")
+    api_key = settings.TAVILY_API_KEY
     if not api_key:
-        logger.warning("TAVILY_API_KEY is not set in environment. Returning empty results.")
+        logger.warning("TAVILY_API_KEY is not set in settings. Returning empty results.")
         return []
 
     payload = {
@@ -30,7 +31,7 @@ async def search_web_async(query: str, max_results: int = 6) -> List[SearchResul
 
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
-            response = await client.post(TAVILY_API_URL, json=payload)
+            response = await client.post(settings.TAVILY_API_URL, json=payload)
             response.raise_for_status()
             data = response.json()
             

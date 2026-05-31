@@ -1,12 +1,10 @@
-import os
 import httpx
 import logging
 from typing import List
 from api.schemas.query import SearchResult
+from api.config import settings
 
 logger = logging.getLogger(__name__)
-
-COHERE_RERANK_URL = "https://api.cohere.com/v1/rerank"
 
 async def rerank_results_async(query: str, search_results: List[SearchResult], min_score: float = 0.6, top_n: int = 3) -> List[SearchResult]:
     """
@@ -17,9 +15,9 @@ async def rerank_results_async(query: str, search_results: List[SearchResult], m
     if not search_results:
         return []
 
-    api_key = os.getenv("COHERE_API_KEY")
+    api_key = settings.COHERE_API_KEY
     if not api_key:
-        logger.warning("COHERE_API_KEY is not set in environment. Falling back to default search rankings.")
+        logger.warning("COHERE_API_KEY is not set in settings. Falling back to default search rankings.")
         return search_results[:top_n]
 
     # Prepare document texts for the Rerank API
@@ -40,7 +38,7 @@ async def rerank_results_async(query: str, search_results: List[SearchResult], m
 
     try:
         async with httpx.AsyncClient(timeout=2.0) as client:
-            response = await client.post(COHERE_RERANK_URL, json=payload, headers=headers)
+            response = await client.post(settings.COHERE_RERANK_URL, json=payload, headers=headers)
             response.raise_for_status()
             data = response.json()
             

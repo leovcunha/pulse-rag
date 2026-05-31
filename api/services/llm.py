@@ -5,28 +5,41 @@ import httpx
 import logging
 from typing import List, AsyncGenerator, Dict, Any
 from api.schemas.query import SearchResult
+from api.config import settings
 
 logger = logging.getLogger(__name__)
 
-GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+# Directory where prompts are stored
+PROMPTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "prompts")
+
+def load_prompt_file(filename: str) -> str:
+    """Reads a prompt template file from the prompts directory."""
+    path = os.path.join(PROMPTS_DIR, filename)
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read().strip()
 
 # Prompt formatting
 def construct_prompt(query: str, sources: List[SearchResult]) -> tuple[str, str, float]:
     """
-    Constructs system and user prompts.
+    Constructs system and user prompts by reading from prompt template resources.
     Returns: (system_prompt, user_prompt, duration_ms)
     """
     start_time = time.perf_counter()
     
-    system_prompt = (
-        "You are an ultra-fast, precise RAG assistant. You must answer the user query "
-        "ONLY using the context sources provided below.\n"
-        "For every claim or fact you state, you MUST append a citation index in brackets, "
-        "such as [1], [2], or [3], matching the source index from the context.\n"
-        "If the context does not contain the answer, you must respond exactly with: "
-        "\"I do not know based on the provided sources.\" Do not use external knowledge or make up facts."
-    )
+    try:
+        system_prompt = load_prompt_file("system_prompt.txt")
+        user_prompt_template = load_prompt_file("user_prompt_template.txt")
+    except Exception as e:
+        logger.error(f"Error loading prompt resource files: {str(e)}. Using fallback instructions.")
+        system_prompt = (
+            "You are an ultra-fast, precise RAG assistant. You must answer the user query "
+            "ONLY using the context sources provided below.\n"
+            "For every claim or fact you state, you MUST append a citation index in brackets, "
+            "such as [1], [2], or [3], matching the source index from the context.\n"
+            "If the context does not contain the answer, you must respond exactly with: "
+            "\"I do not know based on the provided sources.\""
+        )
+        user_prompt_template = "Context Sources:\n{context}\nUser Query: {query}\nAnswer:"
     
     context_str = ""
     if not sources:
@@ -35,7 +48,7 @@ def construct_prompt(query: str, sources: List[SearchResult]) -> tuple[str, str,
         for idx, src in enumerate(sources, 1):
             context_str += f"[{idx}] Title: {src.title}\nURL: {src.url}\nContent: {src.content}\n\n"
             
-    user_prompt = f"Context Sources:\n{context_str}User Query: {query}\nAnswer:"
+    user_prompt = user_prompt_template.format(context=context_str, query=query)
     
     end_time = time.perf_counter()
     duration_ms = (end_time - start_time) * 1000.0
@@ -55,17 +68,17 @@ async def stream_llm_response(query: str, sources: List[SearchResult]) -> AsyncG
         {"role": "user", "content": user_prompt}
     ]
 
-    groq_api_key = os.getenv("GROQ_API_KEY")
-    openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
+    groq_api_key = settings.GROQ_API_KEY
+    openrouter_api_key = settings.OPENROUTER_API_KEY
 
     # Determine provider sequence
     providers = []
     if groq_api_key:
         providers.append({
             "name": "groq",
-            "url": GROQ_URL,
+            "url": settings.GROQ_URL,
             "key": groq_api_key,
-            "model": "llama-3.1-8b-instant",
+            "model": settings.GROQ_MODEL,
             "headers": {
                 "Authorization": f"Bearer {groq_api_key}",
                 "Content-Type": "application/json"
@@ -77,9 +90,9 @@ async def stream_llm_response(query: str, sources: List[SearchResult]) -> AsyncG
     if openrouter_api_key:
         providers.append({
             "name": "openrouter",
-            "url": OPENROUTER_URL,
+            "url": settings.OPENROUTER_URL,
             "key": openrouter_api_key,
-            "model": "meta-llama/llama-3.1-8b-instruct:free",
+            "model": settings.OPENROUTER_MODEL,
             "headers": {
                 "Authorization": f"Bearer {openrouter_api_key}",
                 "Content-Type": "application/json",
