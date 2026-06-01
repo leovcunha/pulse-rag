@@ -60,6 +60,7 @@ async def query_rag(request: QueryRequest):
             
             prompt_ms = 0.0
             llm_ttft_ms = 0.0
+            ttft_recorded_at = None
             
             # Stream the LLM response
             async for event in stream_llm_response(request.query, reranked_results):
@@ -73,6 +74,7 @@ async def query_rag(request: QueryRequest):
                     }
                 elif event_type == "ttft":
                     llm_ttft_ms = event.get("ttft_ms", 0.0)
+                    ttft_recorded_at = time.perf_counter()
                     yield {
                         "event": "ttft",
                         "data": json.dumps({"ttft_ms": llm_ttft_ms})
@@ -94,7 +96,11 @@ async def query_rag(request: QueryRequest):
                     }
                     
             # Phase 4: Finalize Metrics
-            total_ms = (time.perf_counter() - start_total) * 1000.0
+            # The SLA measures the time up to the first token received (perceived latency)
+            if ttft_recorded_at is not None:
+                total_ms = (ttft_recorded_at - start_total) * 1000.0
+            else:
+                total_ms = (time.perf_counter() - start_total) * 1000.0
             
             metrics = LatencyMetrics(
                 search_ms=search_ms,

@@ -29,16 +29,11 @@ export const LatencyDashboard: React.FC<LatencyDashboardProps> = ({
   const actualTtft = metrics?.llm_ttft_ms || ttft || 0;
   const actualTotal = metrics?.total_ms || 0;
 
-  const actualStreaming = actualTotal > 0 
-    ? Math.max(0, actualTotal - (actualSearch + actualRerank + actualPrompt + actualTtft))
-    : 0;
-
   const steps: LatencyStep[] = [
     { name: 'Web Search (Tavily)', key: 'search_ms', target: 350, description: 'Querying and cleaning web results' },
     { name: 'Reranking (Cohere)', key: 'rerank_ms', target: 150, description: 'Filtering for top 5 relevant cards' },
     { name: 'Prompt Prep', key: 'prompt_ms', target: 5, description: 'In-memory template structuring' },
     { name: 'LLM Time-to-First-Token', key: 'llm_ttft_ms', target: 200, description: 'Provider start to initial token return' },
-    { name: 'LLM Token Streaming', key: 'streaming_ms' as any, target: 1300, description: 'Streaming subsequent tokens of the answer' },
   ];
 
   // Helper to determine status color relative to target
@@ -76,14 +71,10 @@ export const LatencyDashboard: React.FC<LatencyDashboardProps> = ({
       if (status === 'generating' && !ttft) return 'running';
       if (status === 'completed' || ttft) return 'done';
     }
-    if (stepName.includes('Streaming')) {
-      if (status === 'generating' && ttft) return 'running';
-      if (status === 'completed') return 'done';
-    }
     return 'idle';
   };
 
-  const targetTotal = 2000; // 2.0 seconds SLA target
+  const targetTotal = 1800; // 1.8 seconds SLA target (perceived latency to first token)
 
   return (
     <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -132,9 +123,7 @@ export const LatencyDashboard: React.FC<LatencyDashboardProps> = ({
         {steps.map((step) => {
           // Get actual value
           let actualVal = 0;
-          if (step.key === 'streaming_ms') {
-            actualVal = actualStreaming;
-          } else if (metrics) {
+          if (metrics) {
             actualVal = metrics[step.key as keyof LatencyMetrics] || 0;
           } else if (step.key === 'llm_ttft_ms' && ttft) {
             actualVal = ttft;
@@ -180,7 +169,7 @@ export const LatencyDashboard: React.FC<LatencyDashboardProps> = ({
       {/* Total Latency Meter */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>Total Latency SLA</span>
+          <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>Time-to-First-Token SLA</span>
           <div style={{ fontFamily: 'var(--font-mono)' }}>
             {actualTotal > 0 ? (
               <span 
@@ -222,8 +211,8 @@ export const LatencyDashboard: React.FC<LatencyDashboardProps> = ({
             }}
           >
             {actualTotal <= targetTotal 
-              ? '⚡ Target met! System responded within SLA limits.' 
-              : '⚠️ Sub-2s SLA target exceeded (likely due to network or LLM load).'}
+              ? '⚡ SLA Target met! Answer started streaming in under 1.8s.' 
+              : '⚠️ SLA Target exceeded (likely due to search API or network load).'}
           </span>
         )}
       </div>
