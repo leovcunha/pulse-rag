@@ -23,11 +23,22 @@ export const LatencyDashboard: React.FC<LatencyDashboardProps> = ({
   ttft,
   fallbackAlert,
 }) => {
+  const actualSearch = metrics?.search_ms || 0;
+  const actualRerank = metrics?.rerank_ms || 0;
+  const actualPrompt = metrics?.prompt_ms || 0;
+  const actualTtft = metrics?.llm_ttft_ms || ttft || 0;
+  const actualTotal = metrics?.total_ms || 0;
+
+  const actualStreaming = actualTotal > 0 
+    ? Math.max(0, actualTotal - (actualSearch + actualRerank + actualPrompt + actualTtft))
+    : 0;
+
   const steps: LatencyStep[] = [
     { name: 'Web Search (Tavily)', key: 'search_ms', target: 350, description: 'Querying and cleaning web results' },
     { name: 'Reranking (Cohere)', key: 'rerank_ms', target: 150, description: 'Filtering for top 5 relevant cards' },
     { name: 'Prompt Prep', key: 'prompt_ms', target: 5, description: 'In-memory template structuring' },
     { name: 'LLM Time-to-First-Token', key: 'llm_ttft_ms', target: 200, description: 'Provider start to initial token return' },
+    { name: 'LLM Token Streaming', key: 'streaming_ms' as any, target: 1300, description: 'Streaming subsequent tokens of the answer' },
   ];
 
   // Helper to determine status color relative to target
@@ -62,14 +73,16 @@ export const LatencyDashboard: React.FC<LatencyDashboardProps> = ({
       if (['generating', 'completed'].includes(status) && (metrics || ttft)) return 'done';
     }
     if (stepName.includes('First-Token')) {
-      if (status === 'generating') return 'running';
+      if (status === 'generating' && !ttft) return 'running';
       if (status === 'completed' || ttft) return 'done';
+    }
+    if (stepName.includes('Streaming')) {
+      if (status === 'generating' && ttft) return 'running';
+      if (status === 'completed') return 'done';
     }
     return 'idle';
   };
 
-  // Calculate actual total
-  const actualTotal = metrics?.total_ms || 0;
   const targetTotal = 2000; // 2.0 seconds SLA target
 
   return (
@@ -119,7 +132,9 @@ export const LatencyDashboard: React.FC<LatencyDashboardProps> = ({
         {steps.map((step) => {
           // Get actual value
           let actualVal = 0;
-          if (metrics) {
+          if (step.key === 'streaming_ms') {
+            actualVal = actualStreaming;
+          } else if (metrics) {
             actualVal = metrics[step.key as keyof LatencyMetrics] || 0;
           } else if (step.key === 'llm_ttft_ms' && ttft) {
             actualVal = ttft;
