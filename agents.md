@@ -42,6 +42,7 @@ This document establishes the strict rules of engagement, code design principles
 * **Explicit Success Criteria**: Avoid vague definitions of done. Translate tasks into concrete, verifiable outcomes:
   * *Vague*: "Implement API endpoint validation."
   * *Verifiable*: "Write an integration test that sends invalid JSON to the endpoint, verify it returns 422 Unprocessable Entity, then make the test pass."
+* **Test Structure**: All backend Python test suites must live in the `api/tests/` directory, use `pytest` assertions, and name test files with the `test_` prefix (e.g., `test_rag_pipeline.py`). All tests must be runnable in isolation and should mock network calls to external APIs.
 
 ---
 
@@ -62,6 +63,8 @@ This document establishes the strict rules of engagement, code design principles
 * **`client/hooks/`**: Reusable stateful logic.
   * **Allowed**: Session handling, data fetching, global/derived state, and side-effects.
 * **`client/lib/`**: Pure utilities and client-side helper libraries.
+  * **Generalised Helper Rule**: All pure utility functions, text formatters, parsing helper functions, and non-stateful calculations must be isolated from page/container components and placed under `client/src/lib/` (or `client/src/utils/`) organized by theme.
+  * **JSDoc Convention**: All TypeScript helper functions, utilities, and components must be documented using standard JSDoc comment blocks for parameters, returns, and function purposes.
 * **`client/integrations/`**: Third-party SDK wrappers.
 
 ### Best Practices
@@ -86,6 +89,7 @@ This document establishes the strict rules of engagement, code design principles
 ### Data Access Layer (`api/utils/` or `api/repositories/`)
 * **Responsibilities**: Centralize external connections and database REST calls behind clean, defined boundaries (e.g., `api/utils/supabase_client.py`). 
 * **Scaling**: If data access logic grows, modularize it into repositories (e.g., `api/repositories/`), but maintain a single, consolidated entry point for database communication.
+* **Latency Monitoring & Performance**: For recording latencies of various service steps (such as search, rerank, or prompt prep), use the reusable `@time_it` decorator from `api/utils/time.py`. Do not write manual start/stop stopwatch code inside endpoints or service routes. The decorator supports both synchronous and asynchronous functions and returns a tuple `(result, duration_ms)`.
 
 ### Schemas and API Contracts (`api/schemas/`)
 * **Pydantic Validation**: All request and response payloads must enforce schemas defined using Pydantic models under `api/schemas/`.
