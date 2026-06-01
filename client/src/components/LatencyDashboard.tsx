@@ -23,10 +23,6 @@ export const LatencyDashboard: React.FC<LatencyDashboardProps> = ({
   ttft,
   fallbackAlert,
 }) => {
-  const actualSearch = metrics?.search_ms || 0;
-  const actualRerank = metrics?.rerank_ms || 0;
-  const actualPrompt = metrics?.prompt_ms || 0;
-  const actualTtft = metrics?.llm_ttft_ms || ttft || 0;
   const actualTotal = metrics?.total_ms || 0;
 
   const steps: LatencyStep[] = [
