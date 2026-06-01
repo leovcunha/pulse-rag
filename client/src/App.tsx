@@ -32,54 +32,184 @@ export const App: React.FC = () => {
     runQuery(suggestedQuery);
   };
 
-  // Renders streamed text and transforms [1], [2] into interactive badges
+  // Helper to parse citations like [1], [2] inside text segments
+  const renderInlineCitations = (text: string, baseKey: string) => {
+    const regex = /\[(\d+)\]/g;
+    const elements: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = regex.exec(text)) !== null) {
+      const matchIndex = match.index;
+      
+      // Add normal text part
+      if (matchIndex > lastIndex) {
+        elements.push(text.substring(lastIndex, matchIndex));
+      }
+
+      const indexNum = parseInt(match[1], 10);
+      
+      // Add interactive citation link
+      elements.push(
+        <span
+          key={`cite-${baseKey}-${matchIndex}`}
+          className={`citation-link ${highlightedIndex === indexNum ? 'highlighted' : ''}`}
+          onMouseEnter={() => setHighlightedIndex(indexNum)}
+          onMouseLeave={() => setHighlightedIndex(null)}
+        >
+          {indexNum}
+        </span>
+      );
+
+      lastIndex = regex.lastIndex;
+    }
+
+    if (lastIndex < text.length) {
+      elements.push(text.substring(lastIndex));
+    }
+
+    return elements.length > 0 ? elements : [text];
+  };
+
+  // Helper to parse bold markdown ** inside text segments
+  const renderInlineRichText = (text: string, baseKey: string) => {
+    const boldParts = text.split('**');
+    
+    return boldParts.map((part, index) => {
+      const isBold = index % 2 === 1;
+      const partKey = `${baseKey}-bold-${index}`;
+      
+      const citationContent = renderInlineCitations(part, partKey);
+      
+      if (isBold) {
+        return (
+          <strong key={partKey} style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+            {citationContent}
+          </strong>
+        );
+      }
+      return <span key={partKey}>{citationContent}</span>;
+    });
+  };
+
+  // Renders streamed text and transforms markdown lists/headers/rules/citations
   const renderTextWithCitations = (text: string) => {
     if (!text) return null;
 
-    // Convert newlines to paragraphs/breaks
-    const paragraphs = text.split('\n\n');
+    const lines = text.split('\n');
+    const elements: React.ReactNode[] = [];
+    let currentParagraphLines: string[] = [];
 
-    return paragraphs.map((para, paraIdx) => {
-      const regex = /\[(\d+)\]/g;
-      const elements: React.ReactNode[] = [];
-      let lastIndex = 0;
-      let match;
-
-      while ((match = regex.exec(para)) !== null) {
-        const matchIndex = match.index;
-        
-        // Add normal text part
-        if (matchIndex > lastIndex) {
-          elements.push(para.substring(lastIndex, matchIndex));
-        }
-
-        const indexNum = parseInt(match[1], 10);
-        
-        // Add interactive citation link
-        elements.push(
-          <span
-            key={`cite-${paraIdx}-${matchIndex}`}
-            className={`citation-link ${highlightedIndex === indexNum ? 'highlighted' : ''}`}
-            onMouseEnter={() => setHighlightedIndex(indexNum)}
-            onMouseLeave={() => setHighlightedIndex(null)}
-          >
-            {indexNum}
-          </span>
-        );
-
-        lastIndex = regex.lastIndex;
-      }
-
-      if (lastIndex < para.length) {
-        elements.push(para.substring(lastIndex));
-      }
-
+    const flushParagraph = (key: string) => {
+      if (currentParagraphLines.length === 0) return null;
+      const content = currentParagraphLines.join(' ');
+      currentParagraphLines = [];
       return (
-        <p key={`p-${paraIdx}`} style={{ marginBottom: '12px', lineHeight: '1.6', fontSize: '1rem', color: 'var(--text-primary)' }}>
-          {elements}
+        <p key={key} style={{ marginBottom: '16px', lineHeight: '1.6', fontSize: '1rem', color: 'var(--text-primary)' }}>
+          {renderInlineRichText(content, key)}
         </p>
       );
-    });
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
+
+      if (!trimmed) {
+        const para = flushParagraph(`p-${i}`);
+        if (para) elements.push(para);
+        continue;
+      }
+
+      // Check for horizontal rule
+      if (trimmed === '---' || trimmed === '***' || trimmed === '___') {
+        const para = flushParagraph(`p-prev-hr-${i}`);
+        if (para) elements.push(para);
+        elements.push(
+          <hr
+            key={`hr-${i}`}
+            style={{
+              border: 'none',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+              margin: '20px 0'
+            }}
+          />
+        );
+        continue;
+      }
+
+      // Check for headers
+      const headerMatch = line.match(/^(\s*)(#{1,6})\s+(.*)$/);
+      if (headerMatch) {
+        const para = flushParagraph(`p-prev-header-${i}`);
+        if (para) elements.push(para);
+
+        const level = headerMatch[2].length;
+        const headerContent = headerMatch[3];
+        const fontSize = level === 1 ? '1.8rem' : level === 2 ? '1.5rem' : level === 3 ? '1.25rem' : '1.1rem';
+        
+        elements.push(
+          <div
+            key={`header-${i}`}
+            style={{
+              fontSize,
+              fontWeight: 600,
+              marginTop: '20px',
+              marginBottom: '10px',
+              color: 'var(--text-primary)',
+              lineHeight: '1.4'
+            }}
+          >
+            {renderInlineRichText(headerContent, `header-content-${i}`)}
+          </div>
+        );
+        continue;
+      }
+
+      // Check for bullet points (*, -, +)
+      const bulletMatch = line.match(/^(\s*)[*+-]\s+(.*)$/);
+      // Check for numbered lists (e.g. 1., 2.)
+      const numberMatch = line.match(/^(\s*)(\d+)\.\s+(.*)$/);
+
+      if (bulletMatch || numberMatch) {
+        const para = flushParagraph(`p-prev-list-${i}`);
+        if (para) elements.push(para);
+
+        const listContent = bulletMatch ? bulletMatch[2] : numberMatch![3];
+        const isNumbered = !!numberMatch;
+        const prefix = isNumbered ? `${numberMatch![2]}.` : '•';
+
+        elements.push(
+          <div
+            key={`list-${i}`}
+            style={{
+              display: 'flex',
+              gap: '12px',
+              paddingLeft: '20px',
+              marginBottom: '8px',
+              lineHeight: '1.6',
+              fontSize: '1rem',
+              color: 'var(--text-primary)',
+              alignItems: 'flex-start'
+            }}
+          >
+            <span style={{ color: 'var(--accent-primary)', fontWeight: 'bold', minWidth: isNumbered ? '20px' : 'auto', textAlign: isNumbered ? 'right' : 'center' }}>
+              {prefix}
+            </span>
+            <span style={{ flex: 1 }}>
+              {renderInlineRichText(listContent, `list-content-${i}`)}
+            </span>
+          </div>
+        );
+      } else {
+        currentParagraphLines.push(trimmed);
+      }
+    }
+
+    const lastPara = flushParagraph(`p-final`);
+    if (lastPara) elements.push(lastPara);
+
+    return elements;
   };
 
   const suggestions = [
