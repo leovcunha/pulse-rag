@@ -19,14 +19,22 @@ async def search_web_async(query: str, max_results: int = 10) -> List[SearchResu
         logger.warning("TAVILY_API_KEY is not set in settings. Returning empty results.")
         return []
 
+    # Append negative constraints to filter out job boards/commercial recruiting noise
+    refined_query = f"{query} -jobs -careers -recruitment"
+
     payload = {
         "api_key": api_key,
-        "query": query,
+        "query": refined_query,
         "search_depth": "ultra-fast",
         "include_answer": False,
         "include_raw_content": False,
         "include_images": False,
-        "max_results": max_results
+        "max_results": max_results,
+        "exclude_domains": [
+            "jobeka.com", "jobeka.co.uk", "indeed.com", "glassdoor.com", 
+            "linkedin.com", "ziprecruiter.com", "monster.com", "simplyhired.com", 
+            "careerbuilder.com", "totaljobs.com", "reed.co.uk", "jobsite.co.uk"
+        ]
     }
 
     try:
