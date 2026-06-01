@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 
 class QueryRequest(BaseModel):
-    query: str = Field(..., description="The user query to search and answer")
+    query: str = Field(..., min_length=1, description="The user query to search and answer")
 
 class SearchResult(BaseModel):
     title: str = Field(..., description="The title of the webpage")

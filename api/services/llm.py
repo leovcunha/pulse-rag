@@ -6,6 +6,7 @@ import logging
 from typing import List, AsyncGenerator, Dict, Any
 from api.schemas.query import SearchResult
 from api.config import settings
+from api.utils.time import time_it
 
 logger = logging.getLogger(__name__)
 
@@ -19,13 +20,12 @@ def load_prompt_file(filename: str) -> str:
         return f.read().strip()
 
 # Prompt formatting
-def construct_prompt(query: str, sources: List[SearchResult]) -> tuple[str, str, float]:
+@time_it
+def construct_prompt(query: str, sources: List[SearchResult]) -> tuple[str, str]:
     """
     Constructs system and user prompts by reading from prompt template resources.
-    Returns: (system_prompt, user_prompt, duration_ms)
+    Returns: (system_prompt, user_prompt)
     """
-    start_time = time.perf_counter()
-    
     try:
         system_prompt = load_prompt_file("system_prompt.txt")
         user_prompt_template = load_prompt_file("user_prompt_template.txt")
@@ -50,16 +50,14 @@ def construct_prompt(query: str, sources: List[SearchResult]) -> tuple[str, str,
             
     user_prompt = user_prompt_template.format(context=context_str, query=query)
     
-    end_time = time.perf_counter()
-    duration_ms = (end_time - start_time) * 1000.0
-    return system_prompt, user_prompt, duration_ms
+    return system_prompt, user_prompt
 
 async def stream_llm_response(query: str, sources: List[SearchResult]) -> AsyncGenerator[Dict[str, Any], None]:
     """
     Streams response from Groq, falling back to OpenRouter if Groq fails or rate limits.
     Yields dictionary payloads containing tokens, latency metrics, and provider status.
     """
-    system_prompt, user_prompt, prompt_ms = construct_prompt(query, sources)
+    (system_prompt, user_prompt), prompt_ms = construct_prompt(query, sources)
     
     yield {"type": "prompt_metrics", "prompt_ms": prompt_ms}
 

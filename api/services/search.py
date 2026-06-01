@@ -4,11 +4,13 @@ import logging
 from typing import List
 from api.schemas.query import SearchResult
 from api.config import settings
+from api.utils.time import time_it
 
 logger = logging.getLogger(__name__)
 
 TAVILY_API_URL = "https://api.tavily.com/search"
 
+@time_it
 async def search_web_async(query: str, max_results: int = 10) -> List[SearchResult]:
     """
     Asynchronously queries the Tavily Search API.

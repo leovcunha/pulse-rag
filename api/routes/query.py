@@ -27,9 +27,7 @@ async def query_rag(request: QueryRequest):
                 "event": "status",
                 "data": json.dumps({"status": "searching"})
             }
-            start_search = time.perf_counter()
-            search_results = await search_web_async(request.query)
-            search_ms = (time.perf_counter() - start_search) * 1000.0
+            search_results, search_ms = await search_web_async(request.query)
             
             # Send raw search results so client has early visual feedback
             yield {
@@ -42,9 +40,7 @@ async def query_rag(request: QueryRequest):
                 "event": "status",
                 "data": json.dumps({"status": "reranking"})
             }
-            start_rerank = time.perf_counter()
-            reranked_results = await rerank_results_async(request.query, search_results)
-            rerank_ms = (time.perf_counter() - start_rerank) * 1000.0
+            reranked_results, rerank_ms = await rerank_results_async(request.query, search_results)
             
             # Send filtered and ranked sources
             yield {
