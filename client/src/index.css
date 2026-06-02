@@ -182,7 +182,7 @@ body {
 
 /* Gradient text accent */
 .gradient-text {
-  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+  background: linear-gradient(135deg, #ffffff 30%, var(--text-secondary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -209,6 +209,33 @@ body {
 .answer-markdown {
   word-break: break-word;
   overflow-wrap: break-word;
+}
+
+/* Glassmorphism Interactive Button */
+.btn-premium {
+  padding: 0 30px;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 12px;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  background: rgba(56, 189, 248, 0.08);
+  color: var(--accent-primary);
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.05);
+  transition: all var(--transition-fast);
+  outline: none;
+}
+
+.btn-premium:hover:not(:disabled) {
+  background: var(--accent-primary);
+  color: var(--bg-main);
+  box-shadow: 0 4px 20px rgba(56, 189, 248, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-premium:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 

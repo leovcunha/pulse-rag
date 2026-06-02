@@ -64,19 +64,7 @@ export const QueryForm: React.FC<QueryFormProps> = ({
         <button
           type="submit"
           disabled={!query.trim() || isProcessing}
-          style={{
-            padding: '0 30px',
-            fontSize: '1rem',
-            fontWeight: 600,
-            borderRadius: '12px',
-            border: 'none',
-            background: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)',
-            color: 'var(--bg-main)',
-            cursor: 'pointer',
-            opacity: !query.trim() || isProcessing ? 0.6 : 1,
-            transition: 'opacity 0.2s',
-            boxShadow: '0 4px 14px rgba(56, 189, 248, 0.3)'
-          }}
+          className="btn-premium"
           id="submit-btn"
         >
           {isProcessing ? 'Processing...' : 'Search'}
