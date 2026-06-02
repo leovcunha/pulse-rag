@@ -56,10 +56,19 @@ async def rerank_results_async(query: str, search_results: List[SearchResult], m
                     original_result.score = score
                     reranked_results.append(original_result)
             
-            # If everything was filtered out, we can fallback to the single highest scoring result
+            # If everything was filtered out, fallback to search_results[:top_n]
             if not reranked_results and search_results:
-                logger.warning("All results were below Cohere score threshold. Returning highest search result.")
-                return search_results[:1]
+                logger.warning("All results were below Cohere score threshold. Falling back to search results.")
+                return search_results[:top_n]
+
+            # If we have fewer than top_n results, fill from remaining search_results to ensure we have top_n sources
+            if len(reranked_results) < top_n and search_results:
+                included_urls = {r.url for r in reranked_results}
+                for src in search_results:
+                    if len(reranked_results) >= top_n:
+                        break
+                    if src.url not in included_urls:
+                        reranked_results.append(src)
 
             return reranked_results[:top_n]
             

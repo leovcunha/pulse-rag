@@ -46,7 +46,18 @@ async def search_web_async(query: str, max_results: int = 8) -> List[SearchResul
             data = response.json()
             
             results = []
+            seen_titles = set()
+            seen_urls = set()
             for item in data.get("results", []):
+                title = item.get("title", "").strip().lower()
+                # Normalize URL to check for duplicates (strip query params, fragments, and trailing slashes)
+                url_normalized = item.get("url", "").split("?")[0].split("#")[0].rstrip("/")
+                
+                if title in seen_titles or url_normalized in seen_urls:
+                    continue
+                seen_titles.add(title)
+                seen_urls.add(url_normalized)
+                
                 results.append(SearchResult(
                     title=item.get("title", ""),
                     url=item.get("url", ""),

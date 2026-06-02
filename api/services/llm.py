@@ -116,7 +116,7 @@ async def stream_llm_response(query: str, sources: List[SearchResult]) -> AsyncG
             "messages": messages,
             "stream": True,
             "temperature": 0.0,
-            "max_tokens": 700
+            "max_tokens": 500
         }
 
         start_call_time = time.perf_counter()
