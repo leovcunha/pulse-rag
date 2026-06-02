@@ -27,7 +27,7 @@ export const LatencyDashboard: React.FC<LatencyDashboardProps> = ({
 
   const steps: LatencyStep[] = [
     { name: 'Web Search (Tavily)', key: 'search_ms', target: 350, description: 'Querying and cleaning web results' },
-    { name: 'Reranking (Cohere)', key: 'rerank_ms', target: 150, description: 'Filtering for top 5 relevant cards' },
+    { name: 'Reranking (Cohere)', key: 'rerank_ms', target: 150, description: 'Filtering for top 3 relevant cards' },
     { name: 'Prompt Prep', key: 'prompt_ms', target: 5, description: 'In-memory template structuring' },
     { name: 'LLM Time-to-First-Token', key: 'llm_ttft_ms', target: 200, description: 'Provider start to initial token return' },
   ];
