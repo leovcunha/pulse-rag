@@ -137,22 +137,11 @@ export const LatencyDashboard: React.FC<LatencyDashboardProps> = ({
                 </div>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>
                   {actualVal > 0 ? (
-                    <span className={colorClass}>{actualVal.toFixed(0)}ms</span>
+                    <span style={{ color: 'var(--text-primary)' }}>{actualVal.toFixed(0)}ms</span>
                   ) : (
                     <span style={{ color: 'var(--text-muted)' }}>--</span>
                   )}
-                  <span style={{ color: 'var(--text-muted)' }}> / {step.target}ms</span>
                 </div>
-              </div>
-
-              {/* Progress bar container */}
-              <div style={{ height: '4px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '2px', overflow: 'hidden', position: 'relative' }}>
-                {progressState === 'running' && (
-                  <div className="shimmer-bg" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
-                )}
-                {actualVal > 0 && (
-                  <div style={{ height: '100%', borderRadius: '2px', transition: 'width 0.4s ease-out', ...getMetricStyle(actualVal, step.target) }} />
-                )}
               </div>
               <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{step.description}</span>
             </div>
@@ -165,14 +154,14 @@ export const LatencyDashboard: React.FC<LatencyDashboardProps> = ({
       {/* Total Latency Meter */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>Time-to-First-Token SLA</span>
+          <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>Total Pipeline Latency</span>
           <div style={{ fontFamily: 'var(--font-mono)' }}>
             {actualTotal > 0 ? (
               <span 
                 style={{ 
                   fontSize: '1.2rem', 
                   fontWeight: 700, 
-                  color: actualTotal <= targetTotal ? 'var(--accent-success)' : actualTotal <= targetTotal * 1.3 ? 'var(--accent-warning)' : 'var(--accent-error)' 
+                  color: 'var(--accent-primary)'
                 }}
               >
                 {(actualTotal / 1000).toFixed(2)}s
@@ -180,37 +169,8 @@ export const LatencyDashboard: React.FC<LatencyDashboardProps> = ({
             ) : (
               <span style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>--</span>
             )}
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}> / {(targetTotal / 1000).toFixed(1)}s</span>
           </div>
         </div>
-
-        <div style={{ height: '6px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '3px', overflow: 'hidden' }}>
-          {actualTotal > 0 && (
-            <div 
-              style={{ 
-                height: '100%', 
-                borderRadius: '3px', 
-                transition: 'width 0.5s cubic-bezier(0.1, 0.8, 0.2, 1)', 
-                ...getMetricStyle(actualTotal, targetTotal) 
-              }} 
-            />
-          )}
-        </div>
-        
-        {actualTotal > 0 && (
-          <span 
-            style={{ 
-              fontSize: '0.75rem', 
-              textAlign: 'center', 
-              color: actualTotal <= targetTotal ? 'var(--accent-success)' : 'var(--accent-warning)',
-              marginTop: '4px'
-            }}
-          >
-            {actualTotal <= targetTotal 
-              ? '⚡ SLA Target met! Answer started streaming in under 1.8s.' 
-              : '⚠️ SLA Target exceeded (likely due to search API or network load).'}
-          </span>
-        )}
       </div>
     </div>
   );
