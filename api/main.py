@@ -21,7 +21,7 @@ logging.basicConfig(
 load_dotenv()
 
 app = FastAPI(
-    title="Sub-2-Second RAG Gateway",
+    title="Low-Latency RAG Gateway",
     description="High-performance backend routing web queries, reranking results, and streaming cited answers.",
     version="1.0.0"
 )

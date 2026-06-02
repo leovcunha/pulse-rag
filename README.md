@@ -1,6 +1,6 @@
-# Sub-2-Second Web-Scale RAG System
+# Low-Latency Web-Scale RAG System
 
-This document outlines the architecture, data flow, and latency budget for the Sub-2-Second Web-Scale RAG System.
+This document outlines the architecture, data flow, and latency budget for the Low-Latency Web-Scale RAG System.
 
 ## Run It Locally
 
