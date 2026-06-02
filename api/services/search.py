@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 TAVILY_API_URL = "https://api.tavily.com/search"
 
 @time_it
-async def search_web_async(query: str, max_results: int = 10) -> List[SearchResult]:
+async def search_web_async(query: str, max_results: int = 8) -> List[SearchResult]:
     """
     Asynchronously queries the Tavily Search API.
     Returns a list of SearchResult models.
