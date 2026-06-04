@@ -1,8 +1,4 @@
 Context Sources:
 {context}
 User Query: {query}
-
-Response Structure Plan:
-{plan}
-
 Answer:

@@ -99,42 +99,21 @@ async def classify_intent(query: str, history: Optional[List[ChatMessage]]) -> s
 
 async def rewrite_query(query: str, history: Optional[List[ChatMessage]]) -> str:
     """
-    Rewrites the user query to optimize it for Tavily Search based on history,
-    using a sequential planning step (Option A).
+    Rewrites the user query to optimize it for Tavily Search based on history.
     """
-    # Step 1: Planning / Reasoning Step
-    try:
-        plan_prompt = load_prompt_file("rewrite_plan_prompt.txt")
-    except Exception as e:
-        logger.error(f"Error loading rewrite plan prompt: {str(e)}")
-        plan_prompt = "Explain how to rewrite/transform the query for search."
-
-    plan_messages = [{"role": "system", "content": plan_prompt}]
-    if history:
-        for msg in history:
-            plan_messages.append({"role": msg.role, "content": msg.content})
-    plan_messages.append({"role": "user", "content": f"User query: {query}"})
-
-    plan = await get_fast_completion(plan_messages, max_tokens=150)
-    logger.info(f"Query rewrite plan: {plan}")
-
-    # Step 2: Final rewritten query generation
     try:
         system_prompt = load_prompt_file("rewrite_prompt.txt")
     except Exception as e:
         logger.error(f"Error loading rewrite prompt: {str(e)}")
         return query  # Fallback to original query
 
-    exec_messages = [{"role": "system", "content": system_prompt}]
+    messages = [{"role": "system", "content": system_prompt}]
     if history:
         for msg in history:
-            exec_messages.append({"role": msg.role, "content": msg.content})
-    exec_messages.append({
-        "role": "user", 
-        "content": f"User query: {query}\n\nSearch Transformation Plan:\n{plan}"
-    })
+            messages.append({"role": msg.role, "content": msg.content})
+    messages.append({"role": "user", "content": f"User query: {query}"})
 
-    rewritten = await get_fast_completion(exec_messages, max_tokens=100)
+    rewritten = await get_fast_completion(messages, max_tokens=100)
     if rewritten:
         logger.info(f"Query rewritten: '{query}' -> '{rewritten}'")
         return rewritten.strip()
@@ -142,7 +121,7 @@ async def rewrite_query(query: str, history: Optional[List[ChatMessage]]) -> str
 
 # Prompt formatting
 @time_it
-def construct_prompt(query: str, sources: List[SearchResult], plan: str) -> Tuple[str, str]:
+def construct_prompt(query: str, sources: List[SearchResult]) -> Tuple[str, str]:
     """
     Constructs system and user prompts by reading from prompt template resources.
     Returns: (system_prompt, user_prompt)
@@ -160,7 +139,7 @@ def construct_prompt(query: str, sources: List[SearchResult], plan: str) -> Tupl
             "If the context does not contain the answer, you must respond exactly with: "
             "\"I do not know based on the provided sources.\""
         )
-        user_prompt_template = "Context Sources:\n{context}\nUser Query: {query}\n\nResponse Structure Plan:\n{plan}\n\nAnswer:"
+        user_prompt_template = "Context Sources:\n{context}\nUser Query: {query}\nAnswer:"
     
     context_str = ""
     if not sources:
@@ -169,7 +148,7 @@ def construct_prompt(query: str, sources: List[SearchResult], plan: str) -> Tupl
         for idx, src in enumerate(sources, 1):
             context_str += f"[{idx}] Title: {src.title}\nURL: {src.url}\nContent: {src.content}\n\n"
             
-    user_prompt = user_prompt_template.format(context=context_str, query=query, plan=plan)
+    user_prompt = user_prompt_template.format(context=context_str, query=query)
     
     return system_prompt, user_prompt
 
@@ -192,32 +171,7 @@ async def stream_llm_response(
         user_prompt = query
         prompt_ms = 0.0
     else:
-        # Step 1: Generate response structure plan (Option A reasoning step)
-        start_plan = time.perf_counter()
-        try:
-            plan_prompt = load_prompt_file("answer_plan_prompt.txt")
-        except Exception as e:
-            logger.error(f"Error loading answer plan prompt: {str(e)}")
-            plan_prompt = "Plan how to structure the response using ONLY the provided sources."
-
-        context_str = ""
-        if not sources:
-            context_str = "No search results found.\n"
-        else:
-            for idx, src in enumerate(sources, 1):
-                context_str += f"[{idx}] Title: {src.title}\nURL: {src.url}\nContent: {src.content}\n\n"
-
-        plan_messages = [{"role": "system", "content": plan_prompt}]
-        plan_messages.append({"role": "user", "content": f"Context Sources:\n{context_str}\nUser Query: {query}"})
-
-        # Call get_fast_completion to generate the structural reasoning plan (Chain of Thought)
-        plan = await get_fast_completion(plan_messages, max_tokens=250)
-        logger.info(f"Answer structure plan (Chain of Thought):\n{plan}")
-        plan_duration = (time.perf_counter() - start_plan) * 1000.0
-
-        # Step 2: Construct the final prompts with the plan
-        (system_prompt, user_prompt), prompt_ms = construct_prompt(query, sources, plan)
-        prompt_ms += plan_duration
+        (system_prompt, user_prompt), prompt_ms = construct_prompt(query, sources)
     
     yield {"type": "prompt_metrics", "prompt_ms": prompt_ms}
 
