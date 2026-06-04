@@ -104,11 +104,14 @@ In high-performance API design, we maintain a distinction between the **Internal
 ## System Sequence Flow
 
 1. **Query Input**: The user submits a query (e.g., *"What happened in the OpenAI dev day yesterday?"*).
-2. **Parallel Fetch**: FastAPI triggers the async search. Tavily fetches live web data.
-3. **Compression & Rerank**: Cohere filters raw search data down to the 3 most relevant paragraphs.
-4. **Prompt Assembly**: The system builds a structured prompt with strict constraints:
-   > Answer only using the provided context. Append `[1]`, `[2]` to claims based on the source index. If the sources do not contain the answer, say you do not know.
-5. **Streaming Response**: Groq processes the prompt, and the response is streamed to the user interface via SSE.
+2. **Intent Routing**: Groq classifies the query intent using a fast LLM call. If `chitchat`, the request is immediately rejected with a static message, bypassing all downstream search/reranking/generation services. If `real_time_search`, it proceeds.
+3. **Query Transformation Planning (Reasoning Step 1)**: Groq analyzes the query and client-side chat history to generate a *Search Transformation Plan* (Chain of Thought resolving pronouns, relative terms, and keywords).
+4. **Query Rewriting**: Groq executes the query plan to generate the final self-contained keyword search query.
+5. **Parallel Fetch**: FastAPI triggers the async search. Tavily fetches live web data using the transformed query.
+6. **Compression & Rerank**: Cohere filters raw search data down to the 3 most relevant paragraphs.
+7. **Response Structure Planning (Reasoning Step 2)**: Groq analyzes the query and retrieved context to generate a *Response Structure Plan* (Chain of Thought mapping attributes for synthesis, listing specific entities to mask/anonymize, and outlining citation layout).
+8. **Prompt Assembly**: The system constructs the final prompt combining the context, query, and the Response Structure Plan.
+9. **Streaming Response**: Groq processes the final prompt, and the response is streamed to the user interface via SSE.
 
 ---
 

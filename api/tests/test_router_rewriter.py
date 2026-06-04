@@ -77,7 +77,77 @@ async def test_intent_routing_search(
         assert mock_rewrite.call_args[0][0] == "how do I pass it"
         assert len(mock_rewrite.call_args[0][1]) == 1
         assert mock_rewrite.call_args[0][1][0].content == "Tell me about SQE1 UK law exam"
-
         # Verify search and rerank were called with rewritten query
         mock_search.assert_called_once_with("SQE1 UK law exam preparation strategies")
         mock_rerank.assert_called_once_with("SQE1 UK law exam preparation strategies", [])
+
+
+from api.schemas.query import ChatMessage
+from api.services.llm import rewrite_query, stream_llm_response
+
+@pytest.mark.asyncio
+@patch("api.services.llm.get_fast_completion")
+async def test_rewrite_query_sequential_planning(mock_get_completion):
+    """
+    Verifies that rewrite_query performs two sequential LLM calls under Option A.
+    """
+    mock_get_completion.side_effect = [
+        "Plan: Resolve 'it' to SQE1 law exam.",
+        "SQE1 law exam passing requirements"
+    ]
+
+    history = [ChatMessage(role="user", content="Tell me about the SQE1 law exam")]
+    result = await rewrite_query("how do I pass it", history)
+
+    assert result == "SQE1 law exam passing requirements"
+    assert mock_get_completion.call_count == 2
+
+    # Verify first planning call structure
+    first_call_messages = mock_get_completion.call_args_list[0][0][0]
+    assert any("transformation planner" in m["content"] for m in first_call_messages if m["role"] == "system")
+
+    # Verify second execution call contains the plan
+    second_call_messages = mock_get_completion.call_args_list[1][0][0]
+    assert any("Search Transformation Plan:" in m["content"] for m in second_call_messages if m["role"] == "user")
+    assert any("Plan: Resolve 'it'" in m["content"] for m in second_call_messages if m["role"] == "user")
+
+
+@pytest.mark.asyncio
+@patch("api.services.llm.get_fast_completion")
+@patch("httpx.AsyncClient.stream")
+async def test_stream_llm_response_sequential_planning(mock_http_stream, mock_get_completion):
+    """
+    Verifies that stream_llm_response generates a structure plan first, then streams final answer.
+    """
+    mock_get_completion.return_value = "Plan: Group by attribute X. Mask organization Y to 'provider'."
+
+    mock_response = AsyncMock()
+    mock_response.status_code = 200
+    
+    async def mock_iter_lines():
+        yield "data: {\"choices\": [{\"delta\": {\"content\": \"Factual response text\"}}]}"
+        yield "data: [DONE]"
+        
+    mock_response.aiter_lines = mock_iter_lines
+    
+    mock_stream_ctx = AsyncMock()
+    mock_stream_ctx.__aenter__.return_value = mock_response
+    mock_http_stream.return_value = mock_stream_ctx
+
+    sources = [SearchResult(title="Source 1", url="http://src.com", content="Specific context details", score=0.9)]
+    
+    events = []
+    async for event in stream_llm_response("Test query", sources, history=[]):
+        events.append(event)
+        
+    mock_get_completion.assert_called_once()
+    plan_call_messages = mock_get_completion.call_args[0][0]
+    assert any("structured response planner" in m["content"] for m in plan_call_messages if m["role"] == "system")
+
+    mock_http_stream.assert_called_once()
+    post_payload = mock_http_stream.call_args[1]["json"]
+    final_messages = post_payload["messages"]
+    
+    assert any("Response Structure Plan:" in m["content"] for m in final_messages if m["role"] == "user")
+    assert any("Plan: Group by attribute X" in m["content"] for m in final_messages if m["role"] == "user")
+    assert any(e.get("type") == "token" and e.get("token") == "Factual response text" for e in events)
