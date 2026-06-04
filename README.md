@@ -48,13 +48,13 @@ The FastAPI server listens on `http://127.0.0.1:8000`, and the Vite app runs on 
 
 ## System Mechanics
 
-### Why is this a RAG System?
+### Overalls
 This application implements a **Retrieval-Augmented Generation (RAG)** pipeline using live web search:
 1. **Retrieval**: When a query is submitted, the system queries the live web using the Tavily Search API. This makes it a **Web-Scale RAG** or **Search-RAG** system, drawing on current, real-time internet data instead of a static, pre-compiled vector index.
 2. **Augmentation**: The retrieved search summaries are cross-evaluated, ranked, and the top 3 most relevant documents are formatted into a prompt context template.
 3. **Generation**: The compiled prompt is sent to the LLM (Groq/OpenRouter), which synthesizes a response using *only* the provided context and attaches bracketed citation links (e.g., `[1]`, `[2]`) pointing to the sources in the sidebar.
 
-### How does it run in under 2 seconds?
+### How does it run in 2 seconds?
 Achieving sub-2-second end-to-end execution requires optimizations at every pipeline stage:
 - **Asynchronous Pipeline**: The FastAPI gateway is fully asynchronous (`httpx.AsyncClient` and `async/await`), preventing blocked threads while waiting for external API network responses.
 - **Fast Web Search**: Configured with Tavily's `"ultra-fast"` search depth and limited to 8 sources, cutting web retrieval time to ~650ms.
@@ -105,11 +105,11 @@ In high-performance API design, we maintain a distinction between the **Internal
 
 1. **Query Input**: The user submits a query (e.g., *"What happened in the OpenAI dev day yesterday?"*).
 2. **Intent Routing**: Groq classifies the query intent using a fast LLM call. If `chitchat`, the request is immediately rejected with a static message, bypassing all downstream search/reranking/generation services. If `real_time_search`, it proceeds.
-3. **Query Transformation**: Groq analyzes the query and client-side chat history in a single call to generate an optimized, self-contained keyword search query.
+3. **Query Transformation (Rewrite-Retrieve-Read)**: Groq refines and reformulates the query (resolving pronouns, preserving acronyms/technical terms, and performing context-focused expansion with synonyms/domain concepts without redundant word repetition) in a single fast call to optimize search engine recall.
 4. **Parallel Fetch**: FastAPI triggers the async search. Tavily fetches live web data using the transformed query.
 5. **Compression & Rerank**: Cohere filters raw search data down to the 3 most relevant paragraphs.
-6. **Prompt Assembly**: The system constructs the final prompt combining the context, the user query, and inline reasoning instructions.
-7. **Streaming Response (Inline Reasoning)**: Groq streams the response chunk-by-chunk, starting with an inline `### Reasoning` plan (Chain of Thought grouping facts, masking entities, and planning citations) followed by the `### Answer` block.
+6. **Prompt Assembly**: The system constructs the final prompt combining the context and the user query.
+7. **Streaming Response**: The LLM streams the factual response directly to the client with bracketed source citations (e.g., `[1]`, `[2]`), without outputting any internal thinking or reasoning text blocks.
 
 ---
 

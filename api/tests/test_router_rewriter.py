@@ -101,7 +101,7 @@ async def test_rewrite_query_single_call(mock_get_completion):
     
     # Check that it uses system prompt
     call_messages = mock_get_completion.call_args[0][0]
-    assert any("expert search query rewriter" in m["content"] for m in call_messages if m["role"] == "system")
+    assert any("query transformation" in m["content"] for m in call_messages if m["role"] == "system")
 
 
 @pytest.mark.asyncio
@@ -140,4 +140,33 @@ async def test_stream_llm_response_single_call(mock_http_stream, mock_get_comple
     
     assert any("precise web search assistant" in m["content"] for m in final_messages if m["role"] == "system")
     assert any(e.get("type") == "token" and e.get("token") == "Factual response text" for e in events)
+
+
+from api.services.llm import sanitize_history
+
+def test_sanitize_history_keeps_only_last_message():
+    """
+    Verifies that sanitize_history only returns the last message from the history,
+    truncating it if it is a long assistant message.
+    """
+    history = [
+        ChatMessage(role="user", content="Query 1"),
+        ChatMessage(role="assistant", content="Answer 1"),
+        ChatMessage(role="user", content="Query 2"),
+        ChatMessage(role="assistant", content="Answer 2 is a very long response " * 20)
+    ]
+    
+    sanitized = sanitize_history(history)
+    
+    # It should only have 1 message (the last one)
+    assert len(sanitized) == 1
+    assert sanitized[0]["role"] == "assistant"
+    # It should be truncated since it is over 400 characters
+    assert len(sanitized[0]["content"]) <= 405  # 400 + "..."
+    assert sanitized[0]["content"].endswith("...")
+
+    # If history is empty
+    assert sanitize_history([]) == []
+    assert sanitize_history(None) == []
+
 

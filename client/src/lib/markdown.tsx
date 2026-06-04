@@ -15,7 +15,7 @@ export const renderInlineCitations = (
   highlightedIndex: number | null,
   setHighlightedIndex: (idx: number | null) => void
 ): React.ReactNode[] => {
-  const regex = /\[(\d+)\]/g;
+  const regex = /\[([\d\s,]+)\]/g;
   const elements: React.ReactNode[] = [];
   let lastIndex = 0;
   let match;
@@ -28,19 +28,33 @@ export const renderInlineCitations = (
       elements.push(text.substring(lastIndex, matchIndex));
     }
 
-    const indexNum = parseInt(match[1], 10);
+    const citationContent = match[1];
+    const parts = citationContent.split(',').map(p => p.trim()).filter(Boolean);
 
-    // Add interactive citation badge span
-    elements.push(
-      <span
-        key={`cite-${baseKey}-${matchIndex}`}
-        className={`citation-link ${highlightedIndex === indexNum ? 'highlighted' : ''}`}
-        onMouseEnter={() => setHighlightedIndex(indexNum)}
-        onMouseLeave={() => setHighlightedIndex(null)}
-      >
-        {indexNum}
-      </span>
-    );
+    // Render group citation as [1, 2, 3] with individual interactive numbers
+    elements.push(<span key={`cite-group-open-${baseKey}-${matchIndex}`}>[</span>);
+    parts.forEach((part, partIdx) => {
+      const indexNum = parseInt(part, 10);
+      if (!isNaN(indexNum)) {
+        elements.push(
+          <span
+            key={`cite-num-${baseKey}-${matchIndex}-${partIdx}`}
+            className={`citation-link ${highlightedIndex === indexNum ? 'highlighted' : ''}`}
+            onMouseEnter={() => setHighlightedIndex(indexNum)}
+            onMouseLeave={() => setHighlightedIndex(null)}
+            style={{ cursor: 'pointer' }}
+          >
+            {indexNum}
+          </span>
+        );
+        if (partIdx < parts.length - 1) {
+          elements.push(<span key={`cite-sep-${baseKey}-${matchIndex}-${partIdx}`}>, </span>);
+        }
+      } else {
+        elements.push(<span key={`cite-non-num-${baseKey}-${matchIndex}-${partIdx}`}>{part}</span>);
+      }
+    });
+    elements.push(<span key={`cite-group-close-${baseKey}-${matchIndex}`}>]</span>);
 
     lastIndex = regex.lastIndex;
   }

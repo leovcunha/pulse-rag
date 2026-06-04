@@ -70,6 +70,20 @@ async def get_fast_completion(messages: List[Dict[str, str]], max_tokens: int = 
 
     return ""
 
+def sanitize_history(history: Optional[List[ChatMessage]]) -> List[Dict[str, str]]:
+    """
+    Sanitizes chat history by mapping it to LLM message payloads.
+    To prevent Groq TPM rate limits and topic drift, we only keep the
+    single last message from the history.
+    """
+    if not history:
+        return []
+    last_msg = history[-1]
+    content = last_msg.content
+    if last_msg.role == "assistant" and len(content) > 400:
+        content = content[:400] + "..."
+    return [{"role": last_msg.role, "content": content}]
+
 async def classify_intent(query: str, history: Optional[List[ChatMessage]]) -> str:
     """
     Classifies the user query as 'chitchat' or 'real_time_search'.
@@ -85,9 +99,7 @@ async def classify_intent(query: str, history: Optional[List[ChatMessage]]) -> s
         return "real_time_search"  # Default fallback if prompt is missing
 
     messages = [{"role": "system", "content": system_prompt}]
-    if history:
-        for msg in history:
-            messages.append({"role": msg.role, "content": msg.content})
+    messages.extend(sanitize_history(history))
     messages.append({"role": "user", "content": f"User query: {query}"})
 
     intent = await get_fast_completion(messages, max_tokens=10)
@@ -108,9 +120,7 @@ async def rewrite_query(query: str, history: Optional[List[ChatMessage]]) -> str
         return query  # Fallback to original query
 
     messages = [{"role": "system", "content": system_prompt}]
-    if history:
-        for msg in history:
-            messages.append({"role": msg.role, "content": msg.content})
+    messages.extend(sanitize_history(history))
     messages.append({"role": "user", "content": f"User query: {query}"})
 
     rewritten = await get_fast_completion(messages, max_tokens=100)
@@ -146,7 +156,9 @@ def construct_prompt(query: str, sources: List[SearchResult]) -> Tuple[str, str]
         context_str = "No search results found.\n"
     else:
         for idx, src in enumerate(sources, 1):
-            context_str += f"[{idx}] Title: {src.title}\nURL: {src.url}\nContent: {src.content}\n\n"
+            # Truncate content to 1200 characters to prevent Groq TPM rate limits
+            truncated_content = src.content[:1200] + "..." if len(src.content) > 1200 else src.content
+            context_str += f"[{idx}] Title: {src.title}\nURL: {src.url}\nContent: {truncated_content}\n\n"
             
     user_prompt = user_prompt_template.format(context=context_str, query=query)
     
@@ -176,9 +188,7 @@ async def stream_llm_response(
     yield {"type": "prompt_metrics", "prompt_ms": prompt_ms}
 
     messages = [{"role": "system", "content": system_prompt}]
-    if history:
-        for msg in history:
-            messages.append({"role": msg.role, "content": msg.content})
+    messages.extend(sanitize_history(history))
     messages.append({"role": "user", "content": user_prompt})
 
     groq_api_key = settings.GROQ_API_KEY

@@ -104,6 +104,7 @@ This document establishes the strict rules of engagement, code design principles
 * **Sensitive Secrets & Endpoints**: All API credentials (keys, secrets) and environment-specific endpoints/URLs (e.g., search, rerank, or LLM base URLs) must be loaded dynamically from **Environment Variables** (or via a `.env` file for local development). DO NOT read .env file as this will take my secret. If there's an error in missing key or etc. flag that to the developer. 
 * **Application Settings**: Non-sensitive settings like model identifiers, timeouts, maximum limits, and ports must be loaded from **Configuration Files** or config utilities (e.g., a Pydantic Settings class or a JSON/YAML configuration file) rather than hardcoded inline.
 * **LLM Prompts & Templates**: System prompts, instructions, and prompt templates must reside in separate **Prompt Resource Files** (e.g., `.txt` or `.yaml` template files under a designated directory like `api/prompts/` or `api/resources/`) and read at runtime, not embedded as raw multiline strings inside Python or JS source code.
+* **No Speculative or Test-Specific Prompt Hardcoding**: Do not add specific examples, query targets, or hardcoded test-case instructions directly into prompt files to force tests or specific queries to pass. Instead, rely on robust, generalized instructions to guide the model's behavior.
 
 ---
 
@@ -119,3 +120,5 @@ This document establishes the strict rules of engagement, code design principles
     * `docs(repo): update API key environment variables in README`
 * **Clean Diff Review**: Before staging or committing, run `git diff` to review all changes. Ensure no local temporary files, print statement debug lines, hardcoded keys, or draft notes are committed.
 * **Never Commit Secrets**: Ensure `.env` or any secret key file is included in `.gitignore` and never committed to the remote repository.
+* **README and Documentation Synchronization**: Always update the `README.md` and related repository documentation immediately when adding new features, architectural changes, or pipeline components. Do not let documentation fall out of sync with the codebase.
+
