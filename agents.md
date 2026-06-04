@@ -19,7 +19,6 @@ This document establishes the strict rules of engagement, code design principles
 *Write the absolute minimum amount of code necessary to solve the problem. Do not write speculative code or build premature abstractions.*
 
 * **No Speculative Features**: Only implement features explicitly requested. Do not add hooks, configurations, or helper methods for "future extension."
-* **No Single-Use Abstractions**: Avoid creating wrappers, utility classes, or helper functions for code that is only executed in a single place. Keep code inline and concrete until reuse is proven necessary.
 * **Compress and Rewrite**: Keep code compact and readable. If a solution can be implemented cleanly in 50 lines of simple, procedural code, do not write 200 lines of highly abstracted object-oriented code.
 * **Realistic Error Handling**: Implement error handling for expected external failure modes (e.g., API timeouts, rate limits, network drops). Do not write redundant error handling or check for impossible states in deterministic local code.
 
@@ -102,7 +101,7 @@ This document establishes the strict rules of engagement, code design principles
 ## 7. Externalized Configuration & Prompts (No Hardcoding)
 *Never hardcode configuration variables, API endpoints, model identifiers, or LLM prompts inside source code files.*
 
-* **Sensitive Secrets & Endpoints**: All API credentials (keys, secrets) and environment-specific endpoints/URLs (e.g., search, rerank, or LLM base URLs) must be loaded dynamically from **Environment Variables** (or via a `.env` file for local development).
+* **Sensitive Secrets & Endpoints**: All API credentials (keys, secrets) and environment-specific endpoints/URLs (e.g., search, rerank, or LLM base URLs) must be loaded dynamically from **Environment Variables** (or via a `.env` file for local development). DO NOT read .env file as this will take my secret. If there's an error in missing key or etc. flag that to the developer. 
 * **Application Settings**: Non-sensitive settings like model identifiers, timeouts, maximum limits, and ports must be loaded from **Configuration Files** or config utilities (e.g., a Pydantic Settings class or a JSON/YAML configuration file) rather than hardcoded inline.
 * **LLM Prompts & Templates**: System prompts, instructions, and prompt templates must reside in separate **Prompt Resource Files** (e.g., `.txt` or `.yaml` template files under a designated directory like `api/prompts/` or `api/resources/`) and read at runtime, not embedded as raw multiline strings inside Python or JS source code.
 
