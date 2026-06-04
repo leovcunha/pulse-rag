@@ -9,6 +9,9 @@ if ssl_cert_file and not os.path.exists(ssl_cert_file):
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from api.utils.rate_limiter import limiter
 from api.routes.query import router as query_router
 
 # Configure logging
@@ -25,6 +28,10 @@ app = FastAPI(
     description="High-performance backend routing web queries, reranking results, and streaming cited answers.",
     version="1.0.0"
 )
+
+# Register rate limiter with FastAPI
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Configure CORS for React/Vite development server (port 5173 and 3000)
 app.add_middleware(

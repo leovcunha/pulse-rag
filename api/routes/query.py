@@ -1,19 +1,23 @@
 import time
 import json
 import logging
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from sse_starlette.sse import EventSourceResponse
 from api.schemas.query import QueryRequest, LatencyMetrics
 from api.services.search import search_web_async
 from api.services.rerank import rerank_results_async
 from api.services.llm import stream_llm_response
+from api.utils.rate_limiter import limiter
+from api.config import settings
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 @router.post("/query")
-async def query_rag(request: QueryRequest):
+@router.post("/search")
+@limiter.limit(settings.SEARCH_RATE_LIMIT)
+async def query_rag(request: Request, query_request: QueryRequest):
     """
     POST endpoint that triggers the RAG pipeline.
     Orchestrates search, rerank, prompt assembly, LLM streaming, and fallback.
@@ -27,7 +31,7 @@ async def query_rag(request: QueryRequest):
                 "event": "status",
                 "data": json.dumps({"status": "searching"})
             }
-            search_results, search_ms = await search_web_async(request.query)
+            search_results, search_ms = await search_web_async(query_request.query)
             
             # Send raw search results so client has early visual feedback
             yield {
@@ -40,7 +44,7 @@ async def query_rag(request: QueryRequest):
                 "event": "status",
                 "data": json.dumps({"status": "reranking"})
             }
-            reranked_results, rerank_ms = await rerank_results_async(request.query, search_results)
+            reranked_results, rerank_ms = await rerank_results_async(query_request.query, search_results)
             
             # Send filtered and ranked sources
             yield {
@@ -59,7 +63,7 @@ async def query_rag(request: QueryRequest):
             ttft_recorded_at = None
             
             # Stream the LLM response
-            async for event in stream_llm_response(request.query, reranked_results):
+            async for event in stream_llm_response(query_request.query, reranked_results):
                 event_type = event.get("type")
                 if event_type == "prompt_metrics":
                     prompt_ms = event.get("prompt_ms", 0.0)

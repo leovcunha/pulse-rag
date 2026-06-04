@@ -109,3 +109,16 @@ In high-performance API design, we maintain a distinction between the **Internal
 4. **Prompt Assembly**: The system builds a structured prompt with strict constraints:
    > Answer only using the provided context. Append `[1]`, `[2]` to claims based on the source index. If the sources do not contain the answer, say you do not know.
 5. **Streaming Response**: Groq processes the prompt, and the response is streamed to the user interface via SSE.
+
+---
+
+## Rate Limiting & Production Scaling Trade-offs
+
+To protect the downstream AI APIs (Tavily search, Cohere reranking, and Groq/OpenRouter LLM engines) from malicious volumetric abuse and client-side query loops, this gateway implements a rate limiter set at **10 requests per hour per client IP** on the `/api/query` and `/api/search` endpoints.
+In this portfolio deployment, rate-limiting state is tracked purely **in-memory** within the FastAPI application container. 
+
+In a true enterprise production environment, we would scale the rate limiting infrastructure out of local memory using two complementary layers:
+
+1. **Centralized Backend Store (Redis)**: Migrating the `slowapi` backend storage from local memory to a managed, high-performance, centralized Redis cluster. All FastAPI instances connect to this shared store to record and check client request frequencies, resolving the state fragmentation issue and surviving application restarts.
+2. **Edge-Level Protection (WAF)**: Offloading brute-force volumetric attacks, DDoS attempts, and scraper traffic entirely from the FastAPI servers to a Cloud WAF (Web Application Firewall) like **Cloudflare** or **AWS Edge**. The WAF drops abusive requests at the network edge before they ever hit the load balancer or consume backend server resources.
+

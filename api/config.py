@@ -25,5 +25,8 @@ class Settings:
     # Model Configurations
     GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
     OPENROUTER_MODEL: str = os.getenv("OPENROUTER_MODEL", "openrouter/free")
+    
+    # Rate Limiting Configuration
+    SEARCH_RATE_LIMIT: str = os.getenv("SEARCH_RATE_LIMIT", "10/hour")
 
 settings = Settings()
