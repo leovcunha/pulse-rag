@@ -21,12 +21,9 @@ async def search_web_async(query: str, max_results: int = 15) -> List[SearchResu
         logger.warning("TAVILY_API_KEY is not set in settings. Returning empty results.")
         return []
 
-    # Append negative constraints to filter out job boards/commercial recruiting noise
-    refined_query = f"{query} -jobs -careers -recruitment"
-
     payload = {
         "api_key": api_key,
-        "query": refined_query,
+        "query": query,
         "search_depth": "ultra-fast",
         "include_answer": False,
         "include_raw_content": False,
