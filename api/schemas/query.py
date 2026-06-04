@@ -1,8 +1,13 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
+class ChatMessage(BaseModel):
+    role: str = Field(..., description="Role of the sender: 'user' or 'assistant'")
+    content: str = Field(..., description="Content of the message")
+
 class QueryRequest(BaseModel):
     query: str = Field(..., min_length=1, description="The user query to search and answer")
+    history: Optional[List[ChatMessage]] = Field(default=None, description="Recent conversation history")
 
 class SearchResult(BaseModel):
     title: str = Field(..., description="The title of the webpage")

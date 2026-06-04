@@ -16,8 +16,19 @@ export interface LatencyMetrics {
   total_ms: number;
 }
 
-export type QueryStatus = 'idle' | 'searching' | 'reranking' | 'generating' | 'completed' | 'error';
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
 
+export type QueryStatus = 'idle' | 'routing' | 'expanding' | 'searching' | 'reranking' | 'generating' | 'completed' | 'error';
+
+/**
+ * Custom React hook that orchestrates querying the backend RAG pipeline.
+ * Manages request lifecycle state, Server-Sent Events parsing, and capped chat history.
+ * 
+ * @returns {object} State values and the runQuery execution function.
+ */
 export const useRagQuery = () => {
   const [status, setStatus] = useState<QueryStatus>('idle');
   const [answer, setAnswer] = useState<string>('');
@@ -27,10 +38,18 @@ export const useRagQuery = () => {
   const [metrics, setMetrics] = useState<LatencyMetrics | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fallbackAlert, setFallbackAlert] = useState<string | null>(null);
+  const [history, setHistory] = useState<ChatMessage[]>([]);
+  const [transformedQuery, setTransformedQuery] = useState<string | null>(null);
 
+  /**
+   * Triggers the backend RAG pipeline, streams tokens/metrics via SSE, 
+   * and tracks conversation history.
+   * 
+   * @param {string} query The user raw query input.
+   */
   const runQuery = useCallback(async (query: string) => {
     // Reset state for new query
-    setStatus('searching');
+    setStatus('routing');
     setAnswer('');
     setSources([]);
     setProvider('');
@@ -38,14 +57,21 @@ export const useRagQuery = () => {
     setMetrics(null);
     setError(null);
     setFallbackAlert(null);
+    setTransformedQuery(null);
+
+    let answerAccumulator = '';
 
     try {
+      // Send only the last 5 turns (10 messages) to avoid token context bloat and control latency
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ 
+          query,
+          history: history.slice(-10)
+        }),
       });
 
       if (!response.ok) {
@@ -85,6 +111,9 @@ export const useRagQuery = () => {
               switch (currentEvent) {
                 case 'status':
                   setStatus(parsed.status);
+                  if (parsed.transformed_query) {
+                    setTransformedQuery(parsed.transformed_query);
+                  }
                   break;
                 case 'sources':
                   setSources(parsed.sources || []);
@@ -96,7 +125,9 @@ export const useRagQuery = () => {
                   setTtft(parsed.ttft_ms);
                   break;
                 case 'token':
-                  setAnswer((prev) => prev + (parsed.token || ''));
+                  const tok = parsed.token || '';
+                  answerAccumulator += tok;
+                  setAnswer((prev) => prev + tok);
                   break;
                 case 'fallback_alert':
                   setFallbackAlert(parsed.message || 'LLM error. Falling back...');
@@ -119,12 +150,17 @@ export const useRagQuery = () => {
       }
       
       setStatus('completed');
+      setHistory((prev) => [
+        ...prev,
+        { role: 'user', content: query },
+        { role: 'assistant', content: answerAccumulator }
+      ]);
     } catch (err: any) {
       console.error('Query execution failed:', err);
       setError(err?.message || 'Failed to connect to RAG server.');
       setStatus('error');
     }
-  }, []);
+  }, [history]);
 
   return {
     status,
@@ -135,6 +171,9 @@ export const useRagQuery = () => {
     metrics,
     error,
     fallbackAlert,
+    transformedQuery,
     runQuery,
   };
 };
+
+export default useRagQuery;

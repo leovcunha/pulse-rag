@@ -6,7 +6,7 @@ from sse_starlette.sse import EventSourceResponse
 from api.schemas.query import QueryRequest, LatencyMetrics
 from api.services.search import search_web_async
 from api.services.rerank import rerank_results_async
-from api.services.llm import stream_llm_response
+from api.services.llm import stream_llm_response, classify_intent, rewrite_query
 from api.utils.rate_limiter import limiter
 from api.config import settings
 
@@ -40,102 +40,178 @@ async def query_rag(request: Request, query_request: QueryRequest):
         status_code = 200
         search_ms = 0.0
         rerank_ms = 0.0
+        prompt_ms = 0.0
 
         try:
-            # === Phase 1: Web Search ===
-            # Send status update so frontend shows search spinner
+            # === Phase 0: Intent Routing ===
             yield {
                 "event": "status",
-                "data": json.dumps({"status": "searching"})
+                "data": json.dumps({"status": "routing"})
             }
-            # Fetch search results asynchronously (returns list of SearchResult models and execution time in ms)
-            search_results, search_ms = await search_web_async(query_request.query)
-            
-            # Send raw search results so client can render list of links early (optimistic rendering)
-            yield {
-                "event": "sources",
-                "data": json.dumps({"sources": [s.model_dump() for s in search_results]})
-            }
-            
-            # === Phase 2: Reranking ===
-            # Send status update so frontend shows reranking progress
-            yield {
-                "event": "status",
-                "data": json.dumps({"status": "reranking"})
-            }
-            # Use Cohere Rerank API to select top 3 most relevant search snippets
-            reranked_results, rerank_ms = await rerank_results_async(query_request.query, search_results)
-            
-            # Send finalized reranked sources to update the sidebar links
-            yield {
-                "event": "sources",
-                "data": json.dumps({"sources": [s.model_dump() for s in reranked_results]})
-            }
-            
-            # === Phase 3: Prompt Synthesis and LLM Inference ===
-            # Send status update so frontend indicates response text generation
-            yield {
-                "event": "status",
-                "data": json.dumps({"status": "generating"})
-            }
-            
-            prompt_ms = 0.0
-            ttft_recorded_at = None
-            
-            # Stream the LLM response asynchronously chunk by chunk
-            async for event in stream_llm_response(query_request.query, reranked_results):
-                event_type = event.get("type")
+            intent = await classify_intent(query_request.query, query_request.history)
+            logger.info("intent_routed", query=query_request.query, intent=intent)
+
+            if intent == "chitchat":
+                # Skip search and rerank
+                yield {
+                    "event": "status",
+                    "data": json.dumps({"status": "generating"})
+                }
                 
-                # 1. Prompt generation metrics event (indicates prompt text manipulation completed)
-                if event_type == "prompt_metrics":
-                    prompt_ms = event.get("prompt_ms", 0.0)
-                    
-                # 2. LLM Provider status (indicates which provider is running: groq or openrouter)
-                elif event_type == "provider":
-                    prov = event.get("provider")
-                    if prov not in providers_tried:
-                        providers_tried.append(prov)
-                    # If we tried more than 1 provider during the call, a failover occurred
-                    if len(providers_tried) > 1:
+                ttft_recorded_at = None
+                async for event in stream_llm_response(
+                    query_request.query, 
+                    [], 
+                    history=query_request.history, 
+                    is_chitchat=True
+                ):
+                    event_type = event.get("type")
+                    if event_type == "prompt_metrics":
+                        prompt_ms = event.get("prompt_ms", 0.0)
+                    elif event_type == "provider":
+                        prov = event.get("provider")
+                        if prov not in providers_tried:
+                            providers_tried.append(prov)
+                        if len(providers_tried) > 1:
+                            provider_failover = True
+                        yield {
+                            "event": "provider",
+                            "data": json.dumps({"provider": prov})
+                        }
+                    elif event_type == "ttft":
+                        llm_ttft_ms = event.get("ttft_ms", 0.0)
+                        ttft_recorded_at = time.perf_counter()
+                        yield {
+                            "event": "ttft",
+                            "data": json.dumps({"ttft_ms": llm_ttft_ms})
+                        }
+                    elif event_type == "token":
+                        token_count += 1
+                        yield {
+                            "event": "token",
+                            "data": json.dumps({"token": event.get("token")})
+                        }
+                    elif event_type == "fallback_alert":
                         provider_failover = True
-                    yield {
-                        "event": "provider",
-                        "data": json.dumps({"provider": prov})
-                    }
+                        yield {
+                            "event": "fallback_alert",
+                            "data": json.dumps({"message": event.get("message")})
+                        }
+                    elif event_type == "error":
+                        status_code = 500
+                        yield {
+                            "event": "error",
+                            "data": json.dumps({"message": event.get("message")})
+                        }
+            else:
+                # === Phase 1: Query Expansion / Rewriting ===
+                yield {
+                    "event": "status",
+                    "data": json.dumps({"status": "expanding"})
+                }
+                transformed_query = await rewrite_query(query_request.query, query_request.history)
+
+                # Send status update with the transformed query so frontend shows what it is searching for
+                yield {
+                    "event": "status",
+                    "data": json.dumps({
+                        "status": "searching", 
+                        "transformed_query": transformed_query
+                    })
+                }
+                
+                # Fetch search results asynchronously (returns list of SearchResult models and execution time in ms)
+                search_results, search_ms = await search_web_async(transformed_query)
+                
+                # Send raw search results so client can render list of links early (optimistic rendering)
+                yield {
+                    "event": "sources",
+                    "data": json.dumps({"sources": [s.model_dump() for s in search_results]})
+                }
+                
+                # === Phase 2: Reranking ===
+                # Send status update so frontend shows reranking progress
+                yield {
+                    "event": "status",
+                    "data": json.dumps({"status": "reranking"})
+                }
+                # Use Cohere Rerank API to select top 3 most relevant search snippets
+                reranked_results, rerank_ms = await rerank_results_async(transformed_query, search_results)
+                
+                # Send finalized reranked sources to update the sidebar links
+                yield {
+                    "event": "sources",
+                    "data": json.dumps({"sources": [s.model_dump() for s in reranked_results]})
+                }
+                
+                # === Phase 3: Prompt Synthesis and LLM Inference ===
+                # Send status update so frontend indicates response text generation
+                yield {
+                    "event": "status",
+                    "data": json.dumps({"status": "generating"})
+                }
+                
+                ttft_recorded_at = None
+                
+                # Stream the LLM response asynchronously chunk by chunk
+                async for event in stream_llm_response(
+                    transformed_query, 
+                    reranked_results, 
+                    history=query_request.history, 
+                    is_chitchat=False
+                ):
+                    event_type = event.get("type")
                     
-                # 3. Time-To-First-Token (TTFT) event
-                elif event_type == "ttft":
-                    llm_ttft_ms = event.get("ttft_ms", 0.0)
-                    ttft_recorded_at = time.perf_counter()
-                    yield {
-                        "event": "ttft",
-                        "data": json.dumps({"ttft_ms": llm_ttft_ms})
-                    }
-                    
-                # 4. Content token chunk event
-                elif event_type == "token":
-                    token_count += 1
-                    yield {
-                        "event": "token",
-                        "data": json.dumps({"token": event.get("token")})
-                    }
-                    
-                # 5. Fallback alert (emitted when primary LLM fails and fallback begins)
-                elif event_type == "fallback_alert":
-                    provider_failover = True
-                    yield {
-                        "event": "fallback_alert",
-                        "data": json.dumps({"message": event.get("message")})
-                    }
-                    
-                # 6. Provider-level errors
-                elif event_type == "error":
-                    status_code = 500
-                    yield {
-                        "event": "error",
-                        "data": json.dumps({"message": event.get("message")})
-                    }
-                    
+                    # 1. Prompt generation metrics event (indicates prompt text manipulation completed)
+                    if event_type == "prompt_metrics":
+                        prompt_ms = event.get("prompt_ms", 0.0)
+                        
+                    # 2. LLM Provider status (indicates which provider is running: groq or openrouter)
+                    elif event_type == "provider":
+                        prov = event.get("provider")
+                        if prov not in providers_tried:
+                            providers_tried.append(prov)
+                        # If we tried more than 1 provider during the call, a failover occurred
+                        if len(providers_tried) > 1:
+                            provider_failover = True
+                        yield {
+                            "event": "provider",
+                            "data": json.dumps({"provider": prov})
+                        }
+                        
+                    # 3. Time-To-First-Token (TTFT) event
+                    elif event_type == "ttft":
+                        llm_ttft_ms = event.get("ttft_ms", 0.0)
+                        ttft_recorded_at = time.perf_counter()
+                        yield {
+                            "event": "ttft",
+                            "data": json.dumps({"ttft_ms": llm_ttft_ms})
+                        }
+                        
+                    # 4. Content token chunk event
+                    elif event_type == "token":
+                        token_count += 1
+                        yield {
+                            "event": "token",
+                            "data": json.dumps({"token": event.get("token")})
+                        }
+                        
+                    # 5. Fallback alert (emitted when primary LLM fails and fallback begins)
+                    elif event_type == "fallback_alert":
+                        provider_failover = True
+                        yield {
+                            "event": "fallback_alert",
+                            "data": json.dumps({"message": event.get("message")})
+                        }
+                        
+                    # 6. Provider-level errors
+                    elif event_type == "error":
+                        status_code = 500
+                        yield {
+                            "event": "error",
+                            "data": json.dumps({"message": event.get("message")})
+                        }
+                        
             # === Phase 4: Finalize Metrics ===
             # The RAG perceived latency SLA measures time up to the first token received
             if ttft_recorded_at is not None:
@@ -191,3 +267,4 @@ async def query_rag(request: Request, query_request: QueryRequest):
             )
 
     return EventSourceResponse(event_generator())
+

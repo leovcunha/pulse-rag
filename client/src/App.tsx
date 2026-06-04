@@ -25,6 +25,7 @@ export const App: React.FC = () => {
     metrics,
     error,
     fallbackAlert,
+    transformedQuery,
     runQuery,
   } = useRagQuery();
 
@@ -55,6 +56,7 @@ export const App: React.FC = () => {
               error={error}
               highlightedIndex={highlightedIndex}
               setHighlightedIndex={setHighlightedIndex}
+              transformedQuery={transformedQuery}
             />
           </div>
 

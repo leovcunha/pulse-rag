@@ -16,6 +16,8 @@ export interface AnswerPanelProps {
   highlightedIndex: number | null;
   /** Callback to set or clear the highlighted citation index */
   setHighlightedIndex: (idx: number | null) => void;
+  /** Transformed / expanded search query (optional) */
+  transformedQuery?: string | null;
 }
 
 /**
@@ -32,6 +34,7 @@ export const AnswerPanel: React.FC<AnswerPanelProps> = ({
   error,
   highlightedIndex,
   setHighlightedIndex,
+  transformedQuery,
 }) => {
   const isGeneratingActive = status !== 'completed' && status !== 'error' && status !== 'idle';
 
@@ -43,7 +46,11 @@ export const AnswerPanel: React.FC<AnswerPanelProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
             <span className="status-dot active" />
             <span>
-              {status === 'searching' 
+              {status === 'routing'
+                ? 'Routing Intent...'
+                : status === 'expanding'
+                ? 'Expanding Query...'
+                : status === 'searching' 
                 ? 'Web Searching...' 
                 : status === 'reranking' 
                 ? 'Cohere Reranking...' 
@@ -70,14 +77,18 @@ export const AnswerPanel: React.FC<AnswerPanelProps> = ({
       )}
 
       {/* Shimmer states for initial pipeline stages when no answer has arrived yet */}
-      {(status === 'searching' || status === 'reranking') && !answer && (
+      {(status === 'routing' || status === 'expanding' || status === 'searching' || status === 'reranking') && !answer && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1 }}>
           <div className="shimmer-bg" style={{ height: '18px', width: '80%', borderRadius: '4px' }} />
           <div className="shimmer-bg" style={{ height: '18px', width: '95%', borderRadius: '4px' }} />
           <div className="shimmer-bg" style={{ height: '18px', width: '60%', borderRadius: '4px' }} />
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-            {status === 'searching' 
-              ? 'Fetching documents from Tavily...' 
+            {status === 'routing'
+              ? 'Analyzing query intent...'
+              : status === 'expanding'
+              ? 'Rewriting search query...'
+              : status === 'searching' 
+              ? (transformedQuery ? `Searching for "${transformedQuery}"...` : 'Fetching documents from Tavily...') 
               : 'Evaluating relevance with Cohere Rerank...'}
           </div>
         </div>
@@ -107,3 +118,5 @@ export const AnswerPanel: React.FC<AnswerPanelProps> = ({
     </div>
   );
 };
+
+export default AnswerPanel;
