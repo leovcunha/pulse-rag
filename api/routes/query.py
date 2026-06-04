@@ -52,57 +52,29 @@ async def query_rag(request: Request, query_request: QueryRequest):
             logger.info("intent_routed", query=query_request.query, intent=intent)
 
             if intent == "chitchat":
-                # Skip search and rerank
+                # Immediately reject chitchat and terminate the pipeline
                 yield {
                     "event": "status",
                     "data": json.dumps({"status": "generating"})
                 }
                 
-                ttft_recorded_at = None
-                async for event in stream_llm_response(
-                    query_request.query, 
-                    [], 
-                    history=query_request.history, 
-                    is_chitchat=True
-                ):
-                    event_type = event.get("type")
-                    if event_type == "prompt_metrics":
-                        prompt_ms = event.get("prompt_ms", 0.0)
-                    elif event_type == "provider":
-                        prov = event.get("provider")
-                        if prov not in providers_tried:
-                            providers_tried.append(prov)
-                        if len(providers_tried) > 1:
-                            provider_failover = True
-                        yield {
-                            "event": "provider",
-                            "data": json.dumps({"provider": prov})
-                        }
-                    elif event_type == "ttft":
-                        llm_ttft_ms = event.get("ttft_ms", 0.0)
-                        ttft_recorded_at = time.perf_counter()
-                        yield {
-                            "event": "ttft",
-                            "data": json.dumps({"ttft_ms": llm_ttft_ms})
-                        }
-                    elif event_type == "token":
-                        token_count += 1
-                        yield {
-                            "event": "token",
-                            "data": json.dumps({"token": event.get("token")})
-                        }
-                    elif event_type == "fallback_alert":
-                        provider_failover = True
-                        yield {
-                            "event": "fallback_alert",
-                            "data": json.dumps({"message": event.get("message")})
-                        }
-                    elif event_type == "error":
-                        status_code = 500
-                        yield {
-                            "event": "error",
-                            "data": json.dumps({"message": event.get("message")})
-                        }
+                providers_tried = ["system"]
+                yield {
+                    "event": "provider",
+                    "data": json.dumps({"provider": "system"})
+                }
+                
+                yield {
+                    "event": "ttft",
+                    "data": json.dumps({"ttft_ms": 0.0})
+                }
+                
+                rejection_msg = "I am a real-time search assistant. I can only answer queries that require web search. Please ask a search-related question."
+                token_count += 1
+                yield {
+                    "event": "token",
+                    "data": json.dumps({"token": rejection_msg})
+                }
             else:
                 # === Phase 1: Query Expansion / Rewriting ===
                 yield {

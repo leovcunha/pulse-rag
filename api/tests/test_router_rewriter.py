@@ -7,33 +7,37 @@ from api.schemas.query import SearchResult
 
 @pytest.mark.asyncio
 @patch("api.routes.query.classify_intent")
-@patch("api.routes.query.stream_llm_response")
-async def test_intent_routing_chitchat(mock_stream_llm, mock_classify):
+async def test_intent_routing_chitchat(mock_classify):
     """
-    Tests that chitchat intent skips search and rerank entirely.
+    Tests that chitchat intent is rejected immediately with a static message.
     """
     # 1. Mock classify_intent to return chitchat
     mock_classify.return_value = "chitchat"
 
-    # 2. Mock LLM generator
-    async def mock_generator(*args, **kwargs):
-        yield {"type": "token", "token": "Hello! I am a RAG chatbot. How can I help you?"}
-    mock_stream_llm.return_value = mock_generator()
-
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
         with patch("api.routes.query.search_web_async") as mock_search, \
-             patch("api.routes.query.rerank_results_async") as mock_rerank:
+             patch("api.routes.query.rerank_results_async") as mock_rerank, \
+             patch("api.routes.query.stream_llm_response") as mock_stream_llm:
             
-            response = await ac.post("/api/query", json={"query": "hello there"})
-            assert response.status_code == 200
+            # Use stream call to check yielded lines
+            async with ac.stream("POST", "/api/query", json={"query": "hello there"}) as response:
+                assert response.status_code == 200
+                lines = []
+                async for line in response.aiter_lines():
+                    if line.strip():
+                        lines.append(line.strip())
             
-            # Verify search and rerank were never called
+            # Verify search, rerank, and stream_llm_response were never called
             mock_search.assert_not_called()
             mock_rerank.assert_not_called()
+            mock_stream_llm.assert_not_called()
             
             # Verify classify_intent was called with query and no history
             mock_classify.assert_called_once_with("hello there", None)
+
+            # Verify that the static rejection message was sent in the token event
+            assert any("I am a real-time search assistant. I can only answer queries that require web search." in l for l in lines)
 
 @pytest.mark.asyncio
 @patch("api.routes.query.classify_intent")
