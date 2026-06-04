@@ -14,12 +14,11 @@ from slowapi.errors import RateLimitExceeded
 from api.utils.rate_limiter import limiter
 from api.routes.query import router as query_router
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
+from api.utils.logging import setup_logging
+from api.utils.middleware import StructlogASGIMiddleware
 
+# Initialize structlog configuration
+setup_logging()
 # Load environment variables
 load_dotenv()
 
@@ -31,7 +30,10 @@ app = FastAPI(
 
 # Register rate limiter with FastAPI
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore
+
+# Add custom structured logging middleware
+app.add_middleware(StructlogASGIMiddleware)
 
 # Configure CORS for React/Vite development server (port 5173 and 3000)
 app.add_middleware(
@@ -47,7 +49,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routes
 app.include_router(query_router, prefix="/api")
 
 @app.get("/health")

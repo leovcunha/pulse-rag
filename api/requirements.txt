@@ -7,5 +7,4 @@ sse-starlette>=1.6.0
 pytest>=7.0.0
 pytest-asyncio>=0.20.0
 slowapi>=0.1.9
-
-
+structlog>=23.1.0

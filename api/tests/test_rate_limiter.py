@@ -63,6 +63,7 @@ async def test_rate_limiting_query_endpoint(mock_stream, mock_rerank, mock_searc
         for _ in range(10):
             response = await ac.post("/api/query", json={"query": "Test rate limiter"})
             assert response.status_code == 200
+            await response.aread()  # Consume stream to allow cleanup
             
         # The 11th request must exceed the rate limit and return 429
         response = await ac.post("/api/query", json={"query": "Test rate limiter"})
@@ -90,6 +91,7 @@ async def test_rate_limiting_search_alias_endpoint(mock_stream, mock_rerank, moc
         for _ in range(10):
             response = await ac.post("/api/search", json={"query": "Test rate limiter"})
             assert response.status_code == 200
+            await response.aread()  # Consume stream to allow cleanup
             
         response = await ac.post("/api/search", json={"query": "Test rate limiter"})
         assert response.status_code == 429

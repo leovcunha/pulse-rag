@@ -112,6 +112,12 @@ In high-performance API design, we maintain a distinction between the **Internal
 
 ---
 
+## Structured Telemetry Logging
+
+Configured asynchronous, structured JSON logging via structlog. Telemetry captures Time-To-First-Token (TTFT), Cohere rerank drops, and provider failover.
+
+---
+
 ## Rate Limiting & Production Scaling Trade-offs
 
 To protect the downstream AI APIs (Tavily search, Cohere reranking, and Groq/OpenRouter LLM engines) from malicious volumetric abuse and client-side query loops, this gateway implements a rate limiter set at **10 requests per hour per client IP** on the `/api/query` and `/api/search` endpoints.

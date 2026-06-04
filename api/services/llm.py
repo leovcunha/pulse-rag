@@ -3,7 +3,7 @@ import time
 import json
 import httpx
 import logging
-from typing import List, AsyncGenerator, Dict, Any
+from typing import List, AsyncGenerator, Dict, Any, Tuple
 from api.schemas.query import SearchResult
 from api.config import settings
 from api.utils.time import time_it
@@ -21,7 +21,7 @@ def load_prompt_file(filename: str) -> str:
 
 # Prompt formatting
 @time_it
-def construct_prompt(query: str, sources: List[SearchResult]) -> tuple[str, str]:
+def construct_prompt(query: str, sources: List[SearchResult]) -> Tuple[str, str]:
     """
     Constructs system and user prompts by reading from prompt template resources.
     Returns: (system_prompt, user_prompt)
