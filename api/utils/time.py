@@ -1,5 +1,6 @@
 import time
 import asyncio
+import inspect
 import functools
 from typing import Any, Callable, Tuple
 
@@ -9,7 +10,7 @@ def time_it(func: Callable[..., Any]) -> Callable[..., Any]:
     Returns a tuple of (function_result, duration_ms).
     Supports both synchronous and asynchronous functions.
     """
-    if asyncio.iscoroutinefunction(func):
+    if inspect.iscoroutinefunction(func):
         @functools.wraps(func)
         async def async_wrapper(*args: Any, **kwargs: Any) -> Tuple[Any, float]:
             start_time = time.perf_counter()

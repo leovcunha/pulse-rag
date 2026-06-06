@@ -24,7 +24,7 @@ class Settings:
     
     # Model Configurations
     GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
-    OPENROUTER_MODEL: str = os.getenv("OPENROUTER_MODEL", "openrouter/free")
+    OPENROUTER_MODEL: str = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free")
     
     # Rate Limiting Configuration
     SEARCH_RATE_LIMIT: str = os.getenv("SEARCH_RATE_LIMIT", "10/hour")

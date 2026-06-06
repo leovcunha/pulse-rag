@@ -31,8 +31,7 @@ export const renderInlineCitations = (
     const citationContent = match[1];
     const parts = citationContent.split(',').map(p => p.trim()).filter(Boolean);
 
-    // Render group citation as [1, 2, 3] with individual interactive numbers
-    elements.push(<span key={`cite-group-open-${baseKey}-${matchIndex}`}>[</span>);
+    // Render group citation with individual interactive numbers (no brackets or commas)
     parts.forEach((part, partIdx) => {
       const indexNum = parseInt(part, 10);
       if (!isNaN(indexNum)) {
@@ -47,14 +46,10 @@ export const renderInlineCitations = (
             {indexNum}
           </span>
         );
-        if (partIdx < parts.length - 1) {
-          elements.push(<span key={`cite-sep-${baseKey}-${matchIndex}-${partIdx}`}>, </span>);
-        }
       } else {
         elements.push(<span key={`cite-non-num-${baseKey}-${matchIndex}-${partIdx}`}>{part}</span>);
       }
     });
-    elements.push(<span key={`cite-group-close-${baseKey}-${matchIndex}`}>]</span>);
 
     lastIndex = regex.lastIndex;
   }

@@ -5,6 +5,13 @@ from unittest.mock import Mock, patch
 from api.utils.rate_limiter import get_real_ip, limiter
 from api.main import app
 
+@pytest.fixture(autouse=True)
+def reset_sse_starlette_exit_event():
+    import sse_starlette.sse
+    sse_starlette.sse.AppStatus.should_exit_event = None
+    yield
+    sse_starlette.sse.AppStatus.should_exit_event = None
+
 def test_get_real_ip_x_forwarded_for():
     """
     Verifies that get_real_ip extracts the first IP address from the X-Forwarded-For header.

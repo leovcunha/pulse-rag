@@ -8,6 +8,7 @@ from api.services.search import search_web_async
 from api.services.rerank import rerank_results_async
 from api.services.llm import stream_llm_response, classify_intent, rewrite_query
 from api.utils.rate_limiter import limiter
+from api.utils.citation_filter import filter_citations
 from api.config import settings
 
 # Get the structlog configured logger for routing telemetry
@@ -124,6 +125,30 @@ async def query_rag(request: Request, query_request: QueryRequest):
                 }
                 
                 ttft_recorded_at = None
+                # Sentence buffer for citation deduplication.
+                # Tokens are accumulated until a sentence boundary is detected,
+                # then the buffer is deduped and flushed to the client.
+                sentence_buffer = ""
+                flushed_length = 0  # tracks how much of the answer has been flushed
+
+                def flush_sentence_buffer(buffer: str) -> tuple:
+                    """
+                    Check the buffer for complete sentences, apply citation
+                    deduplication, and return (text_to_yield, remaining_buffer).
+                    """
+                    # Find the last sentence-ending punctuation followed by a space or end
+                    last_boundary = -1
+                    for i, ch in enumerate(buffer):
+                        if ch in '.!?' and (i + 1 >= len(buffer) or buffer[i + 1] in ' \n'):
+                            last_boundary = i
+
+                    if last_boundary == -1:
+                        return "", buffer
+
+                    complete = buffer[:last_boundary + 1]
+                    remainder = buffer[last_boundary + 1:]
+                    cleaned = filter_citations(complete)
+                    return cleaned, remainder
                 
                 # Stream the LLM response asynchronously chunk by chunk
                 async for event in stream_llm_response(
@@ -160,13 +185,19 @@ async def query_rag(request: Request, query_request: QueryRequest):
                             "data": json.dumps({"ttft_ms": llm_ttft_ms})
                         }
                         
-                    # 4. Content token chunk event
+                    # 4. Content token chunk event — buffered for citation dedup
                     elif event_type == "token":
                         token_count += 1
-                        yield {
-                            "event": "token",
-                            "data": json.dumps({"token": event.get("token")})
-                        }
+                        raw_token = event.get("token", "")
+                        sentence_buffer += raw_token
+
+                        # Try to flush complete sentences
+                        to_yield, sentence_buffer = flush_sentence_buffer(sentence_buffer)
+                        if to_yield:
+                            yield {
+                                "event": "token",
+                                "data": json.dumps({"token": to_yield})
+                            }
                         
                     # 5. Fallback alert (emitted when primary LLM fails and fallback begins)
                     elif event_type == "fallback_alert":
@@ -183,6 +214,14 @@ async def query_rag(request: Request, query_request: QueryRequest):
                             "event": "error",
                             "data": json.dumps({"message": event.get("message")})
                         }
+
+                # Flush any remaining text in the sentence buffer
+                if sentence_buffer.strip():
+                    cleaned_remainder = filter_citations(sentence_buffer)
+                    yield {
+                        "event": "token",
+                        "data": json.dumps({"token": cleaned_remainder})
+                    }
                         
             # === Phase 4: Finalize Metrics ===
             # The RAG perceived latency SLA measures time up to the first token received

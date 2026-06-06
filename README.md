@@ -33,7 +33,7 @@ The FastAPI server listens on `http://127.0.0.1:8000`, and the Vite app runs on 
                     v                                   v
 +---------------------------------------+   +---------------------------------------+
 |   Web Search API (Tavily / Exa)       |   |      LLM Inference Engine             |
-|   - Fetches live web results           |   |      - Primary: Groq (Ultra-Fast)     |
+|   - Fetches live web results           |   |      - Primary: Groq (Fast)     |
 |   - Strips HTML to clean Markdown     |   |      - Fallback: OpenRouter (Free)    |
 +---------------------------------------+   +---------------------------------------+
                     |                                   ^
@@ -48,23 +48,22 @@ The FastAPI server listens on `http://127.0.0.1:8000`, and the Vite app runs on 
 
 ## System Mechanics
 
-### Overalls
 This application implements a **Retrieval-Augmented Generation (RAG)** pipeline using live web search:
 1. **Retrieval**: When a query is submitted, the system queries the live web using the Tavily Search API. This makes it a **Web-Scale RAG** or **Search-RAG** system, drawing on current, real-time internet data instead of a static, pre-compiled vector index.
 2. **Augmentation**: The retrieved search summaries are cross-evaluated, ranked, and the top 3 most relevant documents are formatted into a prompt context template.
 3. **Generation**: The compiled prompt is sent to the LLM (Groq/OpenRouter), which synthesizes a response using *only* the provided context and attaches bracketed citation links (e.g., `[1]`, `[2]`) pointing to the sources in the sidebar.
 
-### How does it run in 2 seconds?
-Achieving sub-2-second end-to-end execution requires optimizations at every pipeline stage:
+### How is low latency achieved?
+Achieving low latency and fast Time-To-First-Token (TTFT) requires optimizations at every pipeline stage:
 - **Asynchronous Pipeline**: The FastAPI gateway is fully asynchronous (`httpx.AsyncClient` and `async/await`), preventing blocked threads while waiting for external API network responses.
-- **Fast Web Search**: Configured with Tavily's `"ultra-fast"` search depth and limited to 8 sources, cutting web retrieval time to ~650ms.
+- **Fast Web Search**: Configured with Tavily's `"fast"` search depth and limited to 8 sources, cutting web retrieval time to ~650ms.
 - **Efficient Filtering**: Cohere Rerank acts as a semantic filter, selecting the top 3 relevant documents so we do not feed noise or overly large contexts to the LLM, keeping reranking under ~250ms.
 - **High-Throughput Inference (Groq)**: The system defaults to Groq (`llama-3.1-8b-instant`), which leverages LPU hardware to achieve extremely low Time-to-First-Token (TTFT) (~200ms) and >200 tokens/second throughput.
 - **SSE Streaming**: Rather than waiting for the entire answer to compile on the server, tokens are streamed to the React client via Server-Sent Events (SSE) as they are generated. The user sees the first characters rendering in **~700ms - 800ms**.
 
-## Latency Budget Breakdown (Target: < 2.0s)
+## Latency Budget Breakdown
 
-To guarantee a sub-2-second response, every component must fit into a strict time budget:
+To minimize perceived delay, every component must fit into a strict time budget aimed at a fast Time-To-First-Token (TTFT):
 
 | Component | Target Latency | Description |
 |---|---|---|
@@ -74,10 +73,10 @@ To guarantee a sub-2-second response, every component must fit into a strict tim
 | **LLM Time-to-First-Token (TTFT)** | 200ms | Groq inference start time |
 | **Initial Client Visual** | **~705ms** | User sees the answer starting to stream |
 
-### Why the 1.8s/2.0s Target (Latency Buffer)
-In high-performance API design, we maintain a distinction between the **Internal SLA Target** and the **User-Perceived SLA Limit** (2.0s):
-- **Transit & Render Overhead**: Setting an internal budget of **1.8s** (scaled to **2.0s** for larger payloads) leaves a safety margin for network transit (DNS, TCP, TLS setup), client-side browser JSON parsing, and React rendering time.
-- **Streaming Experience**: Because we use Server-Sent Events (SSE) to stream response tokens, the user starts seeing results within ~700ms (TTFT), making the overall perceived speed instantaneous, even if the final completion token finishes closer to 2.0s.
+### SLA and Time-To-First-Token (TTFT)
+In high-performance API design, we focus on the **User-Perceived SLA** (Time-To-First-Token) rather than total response completion time:
+- **Transit & Render Overhead**: We account for network transit (DNS, TCP, TLS setup), client-side browser JSON parsing, and React rendering time in our latency metrics.
+- **Streaming Experience**: Because we use Server-Sent Events (SSE) to stream response tokens, the user starts seeing results typically within ~700ms (TTFT). This makes the overall perceived speed instantaneous, even if the total processing and final completion token finishes over 2 seconds.
 
 ---
 
@@ -89,7 +88,7 @@ In high-performance API design, we maintain a distinction between the **Internal
 
 ### 2. Search & Clean Layer (Tavily / Exa)
 * **Role**: Executes web search, bypasses anti-bot measures, and returns clean markdown/text content.
-* **Optimization**: Configured to return a maximum of 8 results utilizing Tavily's `"ultra-fast"` search depth to minimize fetch time. This retrieves clean summaries of matching web pages, cutting retrieval latency down to ~650ms and speeding up downstream reranking.
+* **Optimization**: Configured to return a maximum of 8 results utilizing Tavily's `"fast"` search depth to minimize fetch time. This retrieves clean summaries of matching web pages, cutting retrieval latency down to ~650ms and speeding up downstream reranking.
 
 ### 3. Relevance Filter (Cohere Rerank)
 * **Role**: Cross-encoder relevance filtering to clean out web clutter (navigation elements, cookie policies, etc.).
