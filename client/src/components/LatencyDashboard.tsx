@@ -32,20 +32,7 @@ export const LatencyDashboard: React.FC<LatencyDashboardProps> = ({
     { name: 'LLM Time-to-First-Token', key: 'llm_ttft_ms', target: 200, description: 'Provider start to initial token return' },
   ];
 
-  // Helper to determine status color relative to target
-  const getMetricColorClass = (actual: number, target: number) => {
-    if (actual <= 0) return 'text-muted';
-    if (actual <= target) return 'text-accent-success';
-    if (actual <= target * 1.5) return 'text-accent-warning';
-    return 'text-accent-error';
-  };
 
-  const getMetricStyle = (actual: number, target: number) => {
-    const ratio = Math.min((actual / target) * 100, 100);
-    if (actual <= target) return { width: `${ratio}%`, backgroundColor: '#10b981' };
-    if (actual <= target * 1.5) return { width: `${ratio}%`, backgroundColor: '#f59e0b' };
-    return { width: `${ratio}%`, backgroundColor: '#ef4444' };
-  };
 
   const getStepProgressState = (stepName: string): 'idle' | 'running' | 'done' => {
     if (status === 'idle') return 'idle';
@@ -70,7 +57,7 @@ export const LatencyDashboard: React.FC<LatencyDashboardProps> = ({
     return 'idle';
   };
 
-  const targetTotal = 1800; // 1.8 seconds SLA target (perceived latency to first token)
+
 
   return (
     <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -126,7 +113,6 @@ export const LatencyDashboard: React.FC<LatencyDashboardProps> = ({
           }
           
           const progressState = getStepProgressState(step.name);
-          const colorClass = getMetricColorClass(actualVal, step.target);
 
           return (
             <div key={step.name} style={{ display: 'flex', flexDirection: 'column', gap: '6px', opacity: progressState === 'idle' && actualVal === 0 ? 0.4 : 1, transition: 'opacity 0.25s' }}>
