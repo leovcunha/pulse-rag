@@ -1,0 +1,35 @@
+services:
+  # Backend FastAPI Service
+  - type: web
+    name: pulse-api
+    env: python
+    buildCommand: pip install -r api/requirements.txt
+    startCommand: gunicorn api.main:app -w 4 -k uvicorn.workers.UvicornWorker
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: COHERE_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: ALLOWED_ORIGIN
+        sync: false
+
+  # Frontend Vite Service
+  - type: web
+    name: pulse-client
+    env: static
+    buildCommand: cd client && npm install && npm run build
+    staticPublishPath: ./client/dist
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: pulse-api
+          envVarKey: RENDER_EXTERNAL_URL

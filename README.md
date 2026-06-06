@@ -1,6 +1,6 @@
-# Low-Latency Web-Scale RAG System
+# Pulse: Ultra-Low Latency Web RAG
 
-This document outlines the architecture, data flow, and latency budget for the Low-Latency Web-Scale RAG System.
+This document outlines the architecture, data flow, and latency budget for Pulse, an ultra-low latency Web-Scale RAG system.
 
 ## Run It Locally
 
@@ -33,7 +33,7 @@ The FastAPI server listens on `http://127.0.0.1:8000`, and the Vite app runs on 
                     v                                   v
 +---------------------------------------+   +---------------------------------------+
 |   Web Search API (Tavily / Exa)       |   |      LLM Inference Engine             |
-|   - Fetches live web results           |   |      - Primary: Groq (Fast)     |
+|   - Fetches live web results          |   |      - Primary: Groq (Fast)           |
 |   - Strips HTML to clean Markdown     |   |      - Fallback: OpenRouter (Free)    |
 +---------------------------------------+   +---------------------------------------+
                     |                                   ^
@@ -56,27 +56,16 @@ This application implements a **Retrieval-Augmented Generation (RAG)** pipeline 
 ### How is low latency achieved?
 Achieving low latency and fast Time-To-First-Token (TTFT) requires optimizations at every pipeline stage:
 - **Asynchronous Pipeline**: The FastAPI gateway is fully asynchronous (`httpx.AsyncClient` and `async/await`), preventing blocked threads while waiting for external API network responses.
-- **Fast Web Search**: Configured with Tavily's `"fast"` search depth and limited to 8 sources, cutting web retrieval time to ~650ms.
-- **Efficient Filtering**: Cohere Rerank acts as a semantic filter, selecting the top 3 relevant documents so we do not feed noise or overly large contexts to the LLM, keeping reranking under ~250ms.
-- **High-Throughput Inference (Groq)**: The system defaults to Groq (`llama-3.1-8b-instant`), which leverages LPU hardware to achieve extremely low Time-to-First-Token (TTFT) (~200ms) and >200 tokens/second throughput.
-- **SSE Streaming**: Rather than waiting for the entire answer to compile on the server, tokens are streamed to the React client via Server-Sent Events (SSE) as they are generated. The user sees the first characters rendering in **~700ms - 800ms**.
+- **Fast Web Search**: Configured with Tavily's `"fast"` search depth and limited to 8 sources, cutting web retrieval time.
+- **Efficient Filtering**: Cohere Rerank acts as a semantic filter, selecting the top 3 relevant documents so we do not feed noise or overly large contexts to the LLM.
+- **High-Throughput Inference (Groq)**: The system defaults to Groq (`llama-3.1-8b-instant`), which leverages LPU hardware to achieve extremely low Time-to-First-Token (TTFT).
+- **SSE Streaming**: Rather than waiting for the entire answer to compile on the server, tokens are streamed to the React client via Server-Sent Events (SSE) as they are generated.
 
-## Latency Budget Breakdown
-
-To minimize perceived delay, every component must fit into a strict time budget aimed at a fast Time-To-First-Token (TTFT):
-
-| Component | Target Latency | Description |
-|---|---|---|
-| **Search API** | 350ms | Async fetch and clean from Tavily/Exa |
-| **Reranking Engine** | 150ms | Cohere cross-encoder relevance scoring |
-| **Prompt Construction** | 5ms | In-memory Python string manipulation |
-| **LLM Time-to-First-Token (TTFT)** | 200ms | Groq inference start time |
-| **Initial Client Visual** | **~705ms** | User sees the answer starting to stream |
 
 ### SLA and Time-To-First-Token (TTFT)
 In high-performance API design, we focus on the **User-Perceived SLA** (Time-To-First-Token) rather than total response completion time:
 - **Transit & Render Overhead**: We account for network transit (DNS, TCP, TLS setup), client-side browser JSON parsing, and React rendering time in our latency metrics.
-- **Streaming Experience**: Because we use Server-Sent Events (SSE) to stream response tokens, the user starts seeing results typically within ~700ms (TTFT). This makes the overall perceived speed instantaneous, even if the total processing and final completion token finishes over 2 seconds.
+- **Streaming Experience**: Because we use Server-Sent Events (SSE) to stream response tokens, the user starts seeing results typically within hundreds of miliseconds (TTFT), and total processing and final completion token in around 2 seconds, ideally.
 
 ---
 
@@ -86,7 +75,7 @@ In high-performance API design, we focus on the **User-Perceived SLA** (Time-To-
 * **Role**: Handles incoming user requests and orchestrates the pipeline without blocking.
 * **Key Design Pattern**: Uses Python’s `asyncio.gather()` to fetch data and `StreamingResponse` to stream tokens back to the client via Server-Sent Events (SSE).
 
-### 2. Search & Clean Layer (Tavily / Exa)
+### 2. Search & Clean Layer (Tavily)
 * **Role**: Executes web search, bypasses anti-bot measures, and returns clean markdown/text content.
 * **Optimization**: Configured to return a maximum of 8 results utilizing Tavily's `"fast"` search depth to minimize fetch time. This retrieves clean summaries of matching web pages, cutting retrieval latency down to ~650ms and speeding up downstream reranking.
 
@@ -104,7 +93,7 @@ In high-performance API design, we focus on the **User-Perceived SLA** (Time-To-
 
 1. **Query Input**: The user submits a query (e.g., *"What happened in the OpenAI dev day yesterday?"*).
 2. **Intent Routing**: Groq classifies the query intent using a fast LLM call. If `chitchat`, the request is immediately rejected with a static message, bypassing all downstream search/reranking/generation services. If `real_time_search`, it proceeds.
-3. **Query Transformation (Rewrite-Retrieve-Read)**: Groq refines and reformulates the query (resolving pronouns, preserving acronyms/technical terms, and performing context-focused expansion with synonyms/domain concepts without redundant word repetition) in a single fast call to optimize search engine recall.
+3. **Query Transformation**: Groq refines and reformulates the query (resolving pronouns, preserving acronyms/technical terms, and performing context-focused expansion with synonyms/domain concepts without redundant word repetition) in a single fast call to optimize search engine recall.
 4. **Parallel Fetch**: FastAPI triggers the async search. Tavily fetches live web data using the transformed query.
 5. **Compression & Rerank**: Cohere filters raw search data down to the 3 most relevant paragraphs.
 6. **Prompt Assembly**: The system constructs the final prompt combining the context and the user query.

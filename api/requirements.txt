@@ -8,3 +8,4 @@ pytest>=7.0.0
 pytest-asyncio>=0.20.0
 slowapi>=0.1.9
 structlog>=23.1.0
+gunicorn>=21.2.0

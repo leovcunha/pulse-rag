@@ -86,8 +86,8 @@ This document establishes the strict rules of engagement, code design principles
 * **Data Retrieval**: Fetch external or local data via repositories or dedicated client wrappers. Do not query data sources directly inline inside other business services.
 
 ### Data Access Layer (`api/utils/` or `api/repositories/`)
-* **Responsibilities**: Centralize external connections and database REST calls behind clean, defined boundaries (e.g., `api/utils/supabase_client.py`). 
-* **Scaling**: If data access logic grows, modularize it into repositories (e.g., `api/repositories/`), but maintain a single, consolidated entry point for database communication.
+* **Responsibilities**: Centralize external connections and database REST calls behind clean, defined boundaries 
+* **Scaling**: If data access logic grows, modularize it into repositories (e.g., `api/repositories/`), but mainta(e.g., `api/utils/supabase_client.py`). in a single, consolidated entry point for database communication.
 * **Latency Monitoring & Performance**: For recording latencies of various service steps (such as search, rerank, or prompt prep), use the reusable `@time_it` decorator from `api/utils/time.py`. Do not write manual start/stop stopwatch code inside endpoints or service routes. The decorator supports both synchronous and asynchronous functions and returns a tuple `(result, duration_ms)`.
 
 ### Schemas and API Contracts (`api/schemas/`)
