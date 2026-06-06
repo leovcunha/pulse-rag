@@ -86,4 +86,4 @@ def filter_citations(text: str) -> str:
         else:
             result_parts.append(part)
 
-    return " ".join(result_parts)
+    return "".join(result_parts)

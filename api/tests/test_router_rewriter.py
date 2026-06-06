@@ -101,10 +101,11 @@ async def test_rewrite_query_single_call(mock_get_completion):
     
     # Check that it uses system prompt
     call_messages = mock_get_completion.call_args[0][0]
-    assert any("query transformation" in m["content"] for m in call_messages if m["role"] == "system")
+    assert any("query transformation" in m["content"].lower() for m in call_messages if m["role"] == "system")
 
 
 @pytest.mark.asyncio
+@patch("api.services.llm.settings.GROQ_API_KEY", "dummy_key")
 @patch("api.services.llm.get_fast_completion")
 @patch("httpx.AsyncClient.stream")
 async def test_stream_llm_response_single_call(mock_http_stream, mock_get_completion):
