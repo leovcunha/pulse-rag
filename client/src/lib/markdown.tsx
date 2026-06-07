@@ -36,15 +36,27 @@ export const renderInlineCitations = (
       const indexNum = parseInt(part, 10);
       if (!isNaN(indexNum)) {
         elements.push(
-          <span
+          <a
             key={`cite-num-${baseKey}-${matchIndex}-${partIdx}`}
+            href={`#source-card-${indexNum}`}
             className={`citation-link ${highlightedIndex === indexNum ? 'highlighted' : ''}`}
             onMouseEnter={() => setHighlightedIndex(indexNum)}
             onMouseLeave={() => setHighlightedIndex(null)}
+            onClick={(e) => {
+              e.preventDefault();
+              setHighlightedIndex(indexNum);
+              const cardEl = document.getElementById(`source-card-${indexNum}`);
+              if (cardEl) {
+                cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                if (cardEl.getAttribute('data-expanded') !== 'true') {
+                  (cardEl as HTMLElement).click();
+                }
+              }
+            }}
             style={{ cursor: 'pointer' }}
           >
             {indexNum}
-          </span>
+          </a>
         );
       } else {
         elements.push(<span key={`cite-non-num-${baseKey}-${matchIndex}-${partIdx}`}>{part}</span>);

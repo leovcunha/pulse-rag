@@ -49,8 +49,8 @@ export const QueryForm: React.FC<QueryFormProps> = ({
   const isProcessing = ['searching', 'reranking', 'generating'].includes(status);
 
   return (
-    <div className="glass-panel" style={{ padding: '24px' }}>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '12px' }}>
+    <div className="glass-panel query-form-panel">
+      <form onSubmit={handleSubmit} className="query-form">
         <input
           type="text"
           className="input-glow"
@@ -89,7 +89,9 @@ export const QueryForm: React.FC<QueryFormProps> = ({
                   fontSize: '0.8rem',
                   color: 'var(--text-secondary)',
                   cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
+                  whiteSpace: 'normal',
+                  textAlign: 'left'
                 }}
                 className="suggestion-chip"
                 onMouseEnter={(e) => {

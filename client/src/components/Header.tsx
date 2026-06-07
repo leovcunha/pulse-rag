@@ -9,11 +9,11 @@ import React from 'react';
 export const Header: React.FC = () => {
   return (
     <header style={{ textAlign: 'center', marginBottom: '10px' }}>
-      <h1 style={{ fontSize: '2.5rem', fontWeight: 700, marginBottom: '8px' }}>
+      <h1 className="header-title">
         Low-Latency <span className="gradient-text">Web RAG</span>
       </h1>
-      <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', maxWidth: '600px', margin: '0 auto' }}>
-        A low-latency Retrieval-Augmented Generation pipeline query-scoring Google/web documents with Cohere and streaming answers in real-time.
+      <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', maxWidth: '600px', margin: '0 auto', lineHeight: '1.5' }}>
+        Search the live web and get real-time, AI-synthesized answers with cited sources.
       </p>
     </header>
   );

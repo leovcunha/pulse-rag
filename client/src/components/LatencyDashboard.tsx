@@ -60,7 +60,7 @@ export const LatencyDashboard: React.FC<LatencyDashboardProps> = ({
 
 
   return (
-    <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div className="glass-panel latency-panel" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)' }}>Latency Diagnostics</h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

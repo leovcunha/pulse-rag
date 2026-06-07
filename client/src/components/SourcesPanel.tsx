@@ -30,7 +30,7 @@ export const SourcesPanel: React.FC<SourcesPanelProps> = ({
   setHighlightedIndex,
 }) => {
   return (
-    <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div className="glass-panel sources-panel" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Supporting Sources</h3>
         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{sources.length} total</span>

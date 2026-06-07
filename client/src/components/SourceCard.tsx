@@ -31,6 +31,8 @@ export const SourceCard: React.FC<SourceCardProps> = ({
 
   return (
     <div
+      id={`source-card-${index}`}
+      data-expanded={expanded}
       className="glass-panel"
       style={{
         padding: '16px',
@@ -81,7 +83,8 @@ export const SourceCard: React.FC<SourceCardProps> = ({
                 fontWeight: 600, 
                 color: isHighlighted ? 'var(--accent-primary)' : 'var(--text-primary)',
                 lineHeight: '1.3',
-                marginBottom: '2px'
+                marginBottom: '2px',
+                wordBreak: 'break-word'
               }}
             >
               {source.title || 'Untitled Source'}
@@ -90,7 +93,11 @@ export const SourceCard: React.FC<SourceCardProps> = ({
               href={source.url}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()} // don't toggle expand when clicking link
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                window.open(source.url, '_blank', 'noopener,noreferrer');
+              }}
               style={{
                 fontSize: '0.75rem',
                 color: 'var(--text-muted)',

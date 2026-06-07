@@ -33,7 +33,7 @@ export const App: React.FC = () => {
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px', minHeight: '100vh', display: 'flex', flexDirection: 'column', gap: '30px' }}>
+    <div className="app-container">
       {/* Header section */}
       <Header />
 

@@ -83,6 +83,9 @@ body {
   font-family: var(--font-sans);
   outline: none;
   transition: all var(--transition-fast);
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .input-glow:focus {
@@ -195,6 +198,10 @@ body {
   gap: 30px;
 }
 
+.content-grid > div {
+  min-width: 0;
+}
+
 @media (min-width: 992px) {
   .content-grid {
     grid-template-columns: 2fr 1fr;
@@ -237,5 +244,93 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Responsive Wrapper App Container */
+.app-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  max-width: 100%;
+}
+
+/* Panels with Responsive Padding */
+.query-form-panel {
+  padding: 24px;
+}
+.answer-panel {
+  padding: 30px;
+  min-height: 300px;
+}
+.sources-panel {
+  padding: 24px;
+}
+.latency-panel {
+  padding: 24px;
+}
+
+/* Form layout */
+.query-form {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+/* Responsive Title */
+.header-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 576px) {
+  .app-container {
+    padding: 16px 12px;
+    gap: 20px;
+  }
+  
+  .query-form-panel {
+    padding: 16px 12px;
+  }
+  
+  .answer-panel {
+    padding: 20px 14px;
+    min-height: 200px;
+  }
+  
+  .sources-panel {
+    padding: 16px 12px;
+  }
+  
+  .latency-panel {
+    padding: 16px 12px;
+  }
+  
+  .query-form {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .query-form .btn-premium {
+    width: 100%;
+    padding: 14px 20px;
+    min-height: 48px;
+  }
+  
+  .query-form .input-glow {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .header-title {
+    font-size: 1.5rem;
+    line-height: 1.2;
+  }
+}
+
 
 

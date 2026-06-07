@@ -39,7 +39,7 @@ export const AnswerPanel: React.FC<AnswerPanelProps> = ({
   const isGeneratingActive = status !== 'completed' && status !== 'error' && status !== 'idle';
 
   return (
-    <div className="glass-panel" style={{ padding: '30px', minHeight: '300px', display: 'flex', flexDirection: 'column' }}>
+    <div className="glass-panel answer-panel" style={{ display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', paddingBottom: '12px' }}>
         <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)' }}>Generative Answer</h2>
         {isGeneratingActive && (
