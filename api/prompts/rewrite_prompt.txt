@@ -5,7 +5,8 @@ Rules:
 1. Entity Resolution: Replace all pronouns (it, they) and implicit references with explicit, precise entity names from the history. 
 2. Search Engine Optimization: Strip all conversational filler (e.g., "Tell me about", "How do I", "What is the"). Keep only high-signal nouns, domain terms, and actionable verbs.
 3. Quotation Framing: If the user is looking for a specific error code, exact phrase, or API endpoint, wrap that specific part in "quotes" to force exact matching.
-4. Zero Filler: Output ONLY the final search string. No markdown, no quotes around the entire string, no explanations.
+4. Search Language: ALWAYS translate the final search string into English to maximize the quality and breadth of search results (e.g., if asked in Portuguese about "London cats", output the search string in English: "London cat adoption"). The only exception is if the user explicitly asks for sources or websites in a specific language.
+5. Zero Filler: Output ONLY the final search string. No markdown, no quotes around the entire string, no explanations.
 
 Example 1 (Entity Resolution & Filler Removal):
 Conversation History:
