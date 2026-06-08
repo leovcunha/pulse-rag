@@ -42,6 +42,7 @@ async def query_rag(request: Request, query_request: QueryRequest):
         search_ms = 0.0
         rerank_ms = 0.0
         prompt_ms = 0.0
+        ttft_recorded_at = None
 
         try:
             # === Phase 0: Intent Routing ===
@@ -82,7 +83,7 @@ async def query_rag(request: Request, query_request: QueryRequest):
                     "event": "status",
                     "data": json.dumps({"status": "expanding"})
                 }
-                transformed_query = await rewrite_query(query_request.query, query_request.history)
+                transformed_query, user_language = await rewrite_query(query_request.query, query_request.history)
 
                 # Send status update with the transformed query so frontend shows what it is searching for
                 yield {
@@ -152,8 +153,9 @@ async def query_rag(request: Request, query_request: QueryRequest):
                 
                 # Stream the LLM response asynchronously chunk by chunk
                 async for event in stream_llm_response(
-                    transformed_query, 
+                    query_request.query, 
                     reranked_results, 
+                    user_language,
                     history=query_request.history, 
                     is_chitchat=False
                 ):

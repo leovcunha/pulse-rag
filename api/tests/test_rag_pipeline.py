@@ -93,3 +93,56 @@ async def test_rag_pipeline_flow(mock_stream_llm, mock_rerank, mock_search):
     assert any("world" in l for l in lines)
     assert any("event: metrics" in l for l in lines)
     assert any("completed" in l for l in lines)
+
+@pytest.mark.asyncio
+async def test_multilingual_query_rewriting():
+    """
+    Test that rewrite_query correctly identifies language and translates targets.
+    """
+    from api.services.llm import rewrite_query
+    
+    test_cases = [
+        {
+            "query": "où acheter un chat ragdoll en allemagne",
+            "expected_language": "French",
+            "expected_search_content": ["ragdoll", "katze", "deutschland"]
+        },
+        {
+            "query": "ho bisogno di un idraulico urgente a lisbona",
+            "expected_language": "Italian",
+            "expected_search_content": ["lisboa", ["canalizador", "encanador"]]
+        },
+        {
+            "query": "onde comprar um cachorro golden retriever no brasil",
+            "expected_language": "Portuguese",
+            "expected_search_content": ["golden", "retriever", "brasil"]
+        }
+    ]
+
+    for case in test_cases:
+        rewritten, lang = await rewrite_query(case["query"], history=[])
+        
+        # Verify Language Detection
+        assert lang.lower() == case["expected_language"].lower()
+        
+        # Verify Search String Content (case insensitive)
+        rewritten_lower = rewritten.lower()
+        for term in case["expected_search_content"]:
+            if isinstance(term, list):
+                assert any(t in rewritten_lower for t in term)
+            else:
+                assert term in rewritten_lower
+
+@pytest.mark.asyncio
+async def test_intent_disambiguation_rewriting():
+    """
+    Test that rewrite_query adds intent disambiguation keywords like 'contractor' or 'breeder'.
+    """
+    from api.services.llm import rewrite_query
+    
+    query = "preciso de um encanador urgente em lisboa"
+    rewritten, lang = await rewrite_query(query, history=[])
+    
+    assert lang.lower() == "portuguese"
+    assert "lisboa" in rewritten.lower()
+    assert "encanador" in rewritten.lower() or "canalizador" in rewritten.lower()

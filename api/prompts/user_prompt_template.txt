@@ -1,4 +1,13 @@
 Context Sources:
 {context}
+
 User Query: {query}
-Answer:
+
+FINAL INSTRUCTIONS CHECKLIST (CRITICAL):
+1. Language: You MUST write your ENTIRE response in {user_language}. You MUST translate all context sources into {user_language} and write your final answer exclusively in {user_language}. Do not write a single word in any other language.
+2. Citations (REQUIRED): You MUST cite EVERY fact or claim you write using the exact bracketed index of the source (e.g., [1], [2]). Place citations at the end of sentences before the period. DO NOT create a "References" or "Sources" list at the bottom of your response.
+3. Formatting: Do NOT heavily structure your response with sub-sections or excessive bullet points. You may use a few bullet points if necessary for readability, but the primary structure should be conversational paragraphs separated by new lines. Do NOT include phrases like "Here is the final answer" or XML tags like <final_answer>. Just output the raw paragraphs directly.
+4. Length (CRITICAL): Provide a detailed, comprehensive response of average 400 to 600 tokens (with a minimum of 400 and maximum of 600). You MUST use the full token budget to elaborate in detail on all facts, names, locations, and descriptions found in the context sources. Do not summarize briefly or omit details.
+
+EXAMPLE OF CORRECT CITATION FORMATTING:
+"The bacterial flagellar motor is a rotary engine [1]. It propels the cell through liquid [2]. It is driven by protons [1]."

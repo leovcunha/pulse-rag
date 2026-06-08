@@ -53,7 +53,7 @@ async def test_intent_routing_search(
     """
     # 1. Mock intent and rewrite
     mock_classify.return_value = "real_time_search"
-    mock_rewrite.return_value = "SQE1 UK law exam preparation strategies"
+    mock_rewrite.return_value = ("SQE1 UK law exam preparation strategies", "English")
 
     # 2. Mock search & rerank
     mock_search.return_value = ([], 100.0)
@@ -96,7 +96,7 @@ async def test_rewrite_query_single_call(mock_get_completion):
     history = [ChatMessage(role="user", content="Tell me about the SQE1 law exam")]
     result = await rewrite_query("how do I pass it", history)
 
-    assert result == "SQE1 law exam passing requirements"
+    assert result == ("SQE1 law exam passing requirements", "English")
     mock_get_completion.assert_called_once()
     
     # Check that it uses system prompt
@@ -169,5 +169,79 @@ def test_sanitize_history_keeps_only_last_message():
     # If history is empty
     assert sanitize_history([]) == []
     assert sanitize_history(None) == []
+
+
+@pytest.mark.asyncio
+@patch("api.services.llm.settings.GROQ_API_KEY", "dummy_groq")
+@patch("api.services.llm.settings.OPENROUTER_API_KEY", "dummy_openrouter")
+@patch("httpx.AsyncClient.stream")
+async def test_stream_llm_response_openrouter_fallback(mock_http_stream):
+    """
+    Verifies that when Groq fails, stream_llm_response properly falls back to OpenRouter.
+    """
+    # Create mock stream contexts:
+    # 1. First context (for Groq call) returns 500 error
+    mock_groq_response = AsyncMock()
+    mock_groq_response.status_code = 500
+    mock_groq_response.aread = AsyncMock(return_value=b"Groq internal error")
+    mock_groq_ctx = AsyncMock()
+    mock_groq_ctx.__aenter__.return_value = mock_groq_response
+    
+    # 2. Second context (for OpenRouter call) returns 200 OK and streams tokens
+    mock_openrouter_response = AsyncMock()
+    mock_openrouter_response.status_code = 200
+    async def mock_iter_lines():
+        yield "data: {\"choices\": [{\"delta\": {\"content\": \"OpenRouter response text\"}}]}"
+        yield "data: [DONE]"
+    mock_openrouter_response.aiter_lines = mock_iter_lines
+    mock_openrouter_ctx = AsyncMock()
+    mock_openrouter_ctx.__aenter__.return_value = mock_openrouter_response
+    
+    # Mock AsyncClient.stream to return the Groq context first, then OpenRouter context
+    mock_http_stream.side_effect = [mock_groq_ctx, mock_openrouter_ctx]
+    
+    sources = [SearchResult(title="Source 1", url="http://src.com", content="Specific context details", score=0.9)]
+    
+    events = []
+    async for event in stream_llm_response("Test query", sources, history=[]):
+        events.append(event)
+        
+    # Check that it streamed from both providers, fallback alert triggered, and token emitted
+    assert any(e.get("type") == "fallback_alert" for e in events)
+    assert any(e.get("type") == "provider" and e.get("provider") == "groq" for e in events)
+    assert any(e.get("type") == "provider" and e.get("provider") == "openrouter" for e in events)
+    assert any(e.get("type") == "token" and e.get("token") == "OpenRouter response text" for e in events)
+
+
+@pytest.mark.asyncio
+@patch("api.services.llm.get_fast_completion")
+async def test_rewrite_query_parser_variations(mock_get_completion):
+    """
+    Verifies that rewrite_query parses varied output patterns (case insensitivity, markdown formatting) correctly.
+    """
+    # Test case 1: Case insensitive and extra spacing
+    mock_get_completion.return_value = "language: french\nsearch: custom query string"
+    query, lang = await rewrite_query("original", [])
+    assert lang == "french"
+    assert query == "custom query string"
+
+    # Test case 2: Markdown search format
+    mock_get_completion.return_value = "Language: Portuguese\n**Search:** Outro exemplo de busca"
+    query, lang = await rewrite_query("original", [])
+    assert lang == "Portuguese"
+    assert query == "Outro exemplo de busca"
+
+    # Test case 3: Search query format
+    mock_get_completion.return_value = "Language: English\nSearch query: London plumbing services"
+    query, lang = await rewrite_query("original", [])
+    assert lang == "English"
+    assert query == "London plumbing services"
+
+    # Test case 4: Complete format failure fallback (returns original query)
+    mock_get_completion.return_value = "This is a chatty conversational explanation of query rewriting without any keys."
+    query, lang = await rewrite_query("original", [])
+    assert lang == "English"
+    assert query == "original"
+
 
 

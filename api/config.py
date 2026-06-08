@@ -23,8 +23,12 @@ class Settings:
     OPENROUTER_URL: str = os.getenv("OPENROUTER_URL", "https://openrouter.ai/api/v1/chat/completions")
     
     # Model Configurations
-    GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+    GROQ_MODEL: str = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
     OPENROUTER_MODEL: str = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free")
+    
+    # Fast / Utility Models (for Intent Classification and Query Rewriting)
+    GROQ_FAST_MODEL: str = os.getenv("GROQ_FAST_MODEL", "openai/gpt-oss-20b")
+    OPENROUTER_FAST_MODEL: str = os.getenv("OPENROUTER_FAST_MODEL", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free")
     
     # Rate Limiting Configuration
     SEARCH_RATE_LIMIT: str = os.getenv("SEARCH_RATE_LIMIT", "10/hour")

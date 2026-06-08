@@ -8,7 +8,7 @@ from api.utils.time import time_it
 logger = logging.getLogger(__name__)
 
 @time_it
-async def rerank_results_async(query: str, search_results: List[SearchResult], min_score: float = 0.6, top_n: int = 3) -> List[SearchResult]:
+async def rerank_results_async(query: str, search_results: List[SearchResult], min_score: float = 0.6, top_n: int = 5) -> List[SearchResult]:
     """
     Reranks search results using the Cohere Rerank API.
     Filters out results with scores below min_score and returns top_n items.

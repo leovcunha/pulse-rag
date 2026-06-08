@@ -5,12 +5,7 @@ from unittest.mock import Mock, patch
 from api.utils.rate_limiter import get_real_ip, limiter
 from api.main import app
 
-@pytest.fixture(autouse=True)
-def reset_sse_starlette_exit_event():
-    import sse_starlette.sse
-    sse_starlette.sse.AppStatus.should_exit_event = None
-    yield
-    sse_starlette.sse.AppStatus.should_exit_event = None
+
 
 def test_get_real_ip_x_forwarded_for():
     """
@@ -48,14 +43,20 @@ def test_get_real_ip_no_client():
     assert ip == "127.0.0.1"
 
 @pytest.mark.asyncio
+@patch("api.routes.query.classify_intent")
+@patch("api.routes.query.rewrite_query")
 @patch("api.routes.query.search_web_async")
 @patch("api.routes.query.rerank_results_async")
 @patch("api.routes.query.stream_llm_response")
-async def test_rate_limiting_query_endpoint(mock_stream, mock_rerank, mock_search):
+async def test_rate_limiting_query_endpoint(
+    mock_stream, mock_rerank, mock_search, mock_rewrite, mock_classify
+):
     """
     Verifies that the /api/query endpoint enforces a rate limit (returns 429 after 10 requests).
     """
     limiter.reset()
+    mock_classify.return_value = "real_time_search"
+    mock_rewrite.return_value = ("Test query", "English")
     
     # Mock pipeline services to return empty metrics and stream immediately
     mock_search.return_value = ([], 0.0)
@@ -78,14 +79,20 @@ async def test_rate_limiting_query_endpoint(mock_stream, mock_rerank, mock_searc
         assert "Rate limit exceeded" in response.text
 
 @pytest.mark.asyncio
+@patch("api.routes.query.classify_intent")
+@patch("api.routes.query.rewrite_query")
 @patch("api.routes.query.search_web_async")
 @patch("api.routes.query.rerank_results_async")
 @patch("api.routes.query.stream_llm_response")
-async def test_rate_limiting_search_alias_endpoint(mock_stream, mock_rerank, mock_search):
+async def test_rate_limiting_search_alias_endpoint(
+    mock_stream, mock_rerank, mock_search, mock_rewrite, mock_classify
+):
     """
     Verifies that the /api/search route alias also enforces the rate limit.
     """
     limiter.reset()
+    mock_classify.return_value = "real_time_search"
+    mock_rewrite.return_value = ("Test query", "English")
     
     mock_search.return_value = ([], 0.0)
     mock_rerank.return_value = ([], 0.0)

@@ -24,7 +24,7 @@ async def search_web_async(query: str, max_results: int = 15) -> List[SearchResu
     payload = {
         "api_key": api_key,
         "query": query,
-        "search_depth": "ultra-fast",
+        "search_depth": "basic",
         "include_answer": False,
         "include_raw_content": False,
         "include_images": False,
@@ -32,7 +32,10 @@ async def search_web_async(query: str, max_results: int = 15) -> List[SearchResu
         "exclude_domains": [
             "jobeka.com", "jobeka.co.uk", "indeed.com", "glassdoor.com", 
             "linkedin.com", "ziprecruiter.com", "monster.com", "simplyhired.com", 
-            "careerbuilder.com", "totaljobs.com", "reed.co.uk", "jobsite.co.uk"
+            "careerbuilder.com", "totaljobs.com", "reed.co.uk", "jobsite.co.uk",
+            "amazon.com", "amazon.de", "amazon.co.uk", "amazon.es",
+            "ebay.com", "ebay.de", "ebay.co.uk", "etsy.com", "aliexpress.com",
+            "playpolis.com"
         ]
     }
 

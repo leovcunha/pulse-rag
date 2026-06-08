@@ -5,22 +5,70 @@ Rules:
 1. Entity Resolution: Replace all pronouns (it, they) and implicit references with explicit, precise entity names from the history. 
 2. Search Engine Optimization: Strip all conversational filler (e.g., "Tell me about", "How do I", "What is the"). Keep only high-signal nouns, domain terms, and actionable verbs.
 3. Quotation Framing: If the user is looking for a specific error code, exact phrase, or API endpoint, wrap that specific part in "quotes" to force exact matching.
-4. Search Language: ALWAYS translate the final search string into English to maximize the quality and breadth of search results (e.g., if asked in Portuguese about "London cats", output the search string in English: "London cat adoption"). The only exception is if the user explicitly asks for sources or websites in a specific language.
-5. Zero Filler: Output ONLY the final search string. No markdown, no quotes around the entire string, no explanations.
+4. Search Language Localization: Determine the official language of the target location in the query.
+   - If the query targets Germany, you MUST write/translate the final search query in German (e.g. "Katze Züchter Deutschland").
+   - If the query targets the USA, UK, or any English-speaking region (or no specific country/location is targetted), you MUST write/translate the final search query in English (e.g. "breeder United States").
+   - For all other countries/locations, translate the final search query to the official language of that location (e.g. Portuguese for Portugal).
+5. Robust Language Detection: Classify the user's spoken language based on the grammar and vocabulary they are using to ask the query. For example, if the query is in Portuguese (e.g. "onde comprar um cachorro..."), classify it as Portuguese, even if the query contains an English breed name or entity (like "golden retriever").
+6. Universal Intent Disambiguation: Identify the underlying intent of the search. You MUST replace generic verbs (like "buy", "find") with highly specific industry terminology (like "breeder", "contractor") to prevent the search engine from returning generic SEO spam.
+7. Output Format: You MUST output exactly two lines. You MUST start your response directly with the "Language:" line. Do NOT output any preamble, explanation, notes, thoughts, bullet points, or conversational introduction. Consist of exactly two lines and nothing else.
+Line 1: "Language: [The language the User is speaking in the User Query (e.g., French, English, Portuguese). Do NOT output the localized search language here.]"
+Line 2: "Search: [The final rewritten search string, translated if necessary]"
 
 Example 1 (Entity Resolution & Filler Removal):
 Conversation History:
 User: Tell me about the recent changes to the UK power grid.
 Assistant: UK power grid recent changes TSO , DNO, OFGEM ...
 User: how do they measure frequency drops?
-Output: UK power grid frequency drop measurement techniques
+Output:
+Language: English
+Search: UK power grid frequency drop measurement techniques
 
 Example 2 (Temporal Grounding):
 Conversation History: []
 User: what's the latest state of the art in PEFT?
-Output: state of the art PEFT parameter efficient fine tuning models 2026
+Output:
+Language: English
+Search: state of the art PEFT parameter efficient fine tuning models 2026
 
 Example 3 (Exact Matching):
 Conversation History: []
 User: I'm getting a connection refused on port 5432 in docker
-Output: docker "connection refused" "port 5432"
+Output:
+Language: English
+Search: docker "connection refused" "port 5432"
+
+Example 4 (Live Animals Intent Disambiguation & Localization - Germany):
+Conversation History: []
+User: onde comprar um gato ragdoll na alemanha
+Output:
+Language: Portuguese
+Search: Ragdoll Katze Züchter Deutschland
+
+Example 5 (Live Animals Intent Disambiguation & Localization - United States):
+Conversation History: []
+User: onde comprar um gato ragdoll nos Estados Unidos
+Output:
+Language: Portuguese
+Search: Ragdoll breeder United States
+
+Example 6 (Professional Service & Geographic Localization):
+Conversation History: []
+User: ho bisogno di un idraulico urgente a Lisbona
+Output:
+Language: Italian
+Search: Lisboa canalizador serviços emergenciais
+
+Example 7 (Academic Research Intent Disambiguation):
+Conversation History: []
+User: how does mRNA work for cancer vaccines
+Output:
+Language: English
+Search: mRNA cancer vaccines mechanism clinical research journal
+
+Example 8 (Default Language Translation):
+Conversation History: []
+User: o que é a nova lei de IA na Europa
+Output:
+Language: Portuguese
+Search: European Union AI act new legislation
