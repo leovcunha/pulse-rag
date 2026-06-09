@@ -54,7 +54,7 @@ export const QueryForm: React.FC<QueryFormProps> = ({
         <input
           type="text"
           className="input-glow"
-          placeholder="Ask a question about current events or technical details..."
+          placeholder="What would you like to know?..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           disabled={isProcessing}
